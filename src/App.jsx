@@ -182,14 +182,14 @@ export default function App() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "600" }}>BALANCE</div>
-            <div style={{ fontSize: 22, fontWeight: "800", color: balance >= 0 ? "#86EFAC" : "#FCA5A5", lineHeight: 1.1 }}>
+            <div style={{ fontSize: 9, color: "rgba(56,73,89,0.6)", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "700" }}>BALANCE</div>
+            <div style={{ fontSize: 22, fontWeight: "800", color: balance >= 0 ? "#1A6B3C" : "#B91C1C", lineHeight: 1.1 }}>
               {balance >= 0 ? "" : "-"}{fmt(balance)}
             </div>
           </div>
           <button
             onClick={() => isAdmin ? setIsAdmin(false) : setShowPin(true)}
-            style={{ background: isAdmin ? `rgba(189,221,252,0.2)` : "rgba(255,255,255,0.08)", border: `1.5px solid ${isAdmin ? C.goldLight : "rgba(255,255,255,0.2)"}`, borderRadius: 20, padding: "5px 13px", cursor: "pointer", fontSize: 12, color: isAdmin ? C.goldLight : "rgba(255,255,255,0.65)", fontFamily: "inherit", fontWeight: "700", whiteSpace: "nowrap" }}
+            style={{ background: isAdmin ? "rgba(56,73,89,0.15)" : "rgba(56,73,89,0.12)", border: `1.5px solid ${isAdmin ? "#384959" : "rgba(56,73,89,0.35)"}`, borderRadius: 20, padding: "5px 13px", cursor: "pointer", fontSize: 12, color: isAdmin ? "#384959" : "#384959", fontFamily: "inherit", fontWeight: "700", whiteSpace: "nowrap" }}
           >
             {isAdmin ? "🔓 Admin" : "🔐 Sign In"}
           </button>
