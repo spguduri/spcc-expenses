@@ -195,25 +195,6 @@ export default function App() {
           </button>
         </div>
       </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: "800", fontSize: 18, color: C.gold, letterSpacing: 0.3, lineHeight: 1.2 }}>Spokane Spartans</div>
-          <div style={{ fontSize: 11, color: "rgba(201,151,60,0.5)", fontWeight: "600", letterSpacing: 1, textTransform: "uppercase", marginTop: 1 }}>Cricket Club</div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "600" }}>BALANCE</div>
-            <div style={{ fontSize: 22, fontWeight: "800", color: balance >= 0 ? "#86EFAC" : "#FCA5A5", lineHeight: 1.1 }}>
-              {balance >= 0 ? "" : "-"}{fmt(balance)}
-            </div>
-          </div>
-          <button
-            onClick={() => isAdmin ? setIsAdmin(false) : setShowPin(true)}
-            style={{ background: isAdmin ? `rgba(201,151,60,0.2)` : "rgba(255,255,255,0.08)", border: `1.5px solid ${isAdmin ? C.gold : "rgba(255,255,255,0.2)"}`, borderRadius: 20, padding: "5px 13px", cursor: "pointer", fontSize: 12, color: isAdmin ? C.gold : "rgba(255,255,255,0.55)", fontFamily: "inherit", fontWeight: "700", whiteSpace: "nowrap" }}
-          >
-            {isAdmin ? "🔓 Admin" : "🔐 Sign In"}
-          </button>
-        </div>
-      </div>
 
       {/* Tab Bar */}
       <div style={{ display: "flex", background: "#fff", borderBottom: `1px solid ${C.border}`, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
