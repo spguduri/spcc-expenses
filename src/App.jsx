@@ -23,8 +23,10 @@ const C = {
 };
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────
-// PIN is stored in .env.local (gitignored — never in the public repo)
+// PINs are stored in .env.local (gitignored — never in the public repo)
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || "";
+const USER_PIN  = import.meta.env.VITE_USER_PIN  || "";
+const AUTH_SESSION_KEY = "spcc_auth_level";
 
 // ─── DATA ─────────────────────────────────────────────────────────────────
 const EXPENSE_CATS = ["Umpiring", "Food & Drinks", "Travel/Gas", "League Fees", "Equipment/Balls"];
@@ -59,17 +61,23 @@ const SEED_DATA = {
   customIncCats: [],
 };
 
-const STORAGE_KEY = "spcc_treasurer_data_v2";
+const CURRENT_YEAR = new Date().getFullYear();
+const SEED_YEAR = 2026;
+const AVAILABLE_YEARS = [2024, 2025, 2026, 2027];
+const EMPTY_DATA = { transactions: [], members: [], events: [], customExpCats: [], customIncCats: [] };
 
-function loadData() {
+function storageKey(year) { return `spcc_treasurer_data_v2_${year}`; }
+
+function loadData(year) {
   try {
-    const s = localStorage.getItem(STORAGE_KEY);
-    return s ? JSON.parse(s) : SEED_DATA;
-  } catch { return SEED_DATA; }
+    const s = localStorage.getItem(storageKey(year));
+    if (s) return JSON.parse(s);
+    return year === SEED_YEAR ? SEED_DATA : { ...EMPTY_DATA };
+  } catch { return year === SEED_YEAR ? SEED_DATA : { ...EMPTY_DATA }; }
 }
 
-function saveData(d) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch {}
+function saveData(d, year) {
+  try { localStorage.setItem(storageKey(year), JSON.stringify(d)); } catch {}
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────
@@ -108,8 +116,44 @@ const icons = {
   Events:    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
 };
 
-// ─── PIN MODAL ────────────────────────────────────────────────────────────
-function PinModal({ onClose, onSuccess }) {
+// ─── PIN GATE (full-screen, blocks all access until authenticated) ─────────
+function PinGate({ onAuth }) {
+  const [pin, setPin] = useState("");
+  const [err, setErr] = useState(false);
+
+  const attempt = () => {
+    if (ADMIN_PIN && pin === ADMIN_PIN) { onAuth("admin"); return; }
+    if (USER_PIN  && pin === USER_PIN)  { onAuth("user");  return; }
+    setErr(true); setPin(""); setTimeout(() => setErr(false), 1500);
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
+      <div style={{ background: "#fff", borderRadius: 20, padding: "36px 28px", width: "100%", maxWidth: 340, boxShadow: "0 20px 60px rgba(56,73,89,0.15)", border: `1px solid ${C.border}` }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <img src="/spcc-expenses/logo.png" alt="SPCC" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: `3px solid ${C.gold}`, marginBottom: 16 }} onError={e => { e.target.style.display = "none"; }} />
+          <div style={{ fontWeight: "800", fontSize: 20, color: C.dark, marginBottom: 6 }}>Spokane Spartans CC</div>
+          <div style={{ fontSize: 14, color: C.sub }}>Enter your PIN to access finances</div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>Don't have a PIN? Contact the club admin.</div>
+        </div>
+        <input
+          type="password"
+          autoFocus
+          placeholder="Enter PIN"
+          value={pin}
+          onChange={e => setPin(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && attempt()}
+          style={{ ...inputStyle, textAlign: "center", fontSize: 18, letterSpacing: 4, border: `2px solid ${err ? C.red : C.border}`, transition: "border-color 0.2s" }}
+        />
+        {err && <div style={{ color: C.red, fontSize: 12, textAlign: "center", marginTop: 6 }}>Incorrect PIN — try again</div>}
+        <button onClick={attempt} style={{ ...saveBtnStyle, marginTop: 14 }}>Access Finances</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── ADMIN PIN MODAL (viewer → admin escalation) ──────────────────────────
+function AdminPinModal({ onClose, onSuccess }) {
   const [pin, setPin] = useState("");
   const [err, setErr] = useState(false);
 
@@ -124,12 +168,12 @@ function PinModal({ onClose, onSuccess }) {
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>🔐</div>
           <div style={{ fontWeight: "800", fontSize: 18, color: C.dark }}>Admin Access</div>
-          <div style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Enter your PIN to unlock editing</div>
+          <div style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Enter your Admin PIN to unlock editing</div>
         </div>
         <input
           type="password"
           autoFocus
-          placeholder="Enter PIN"
+          placeholder="Enter Admin PIN"
           value={pin}
           onChange={e => setPin(e.target.value)}
           onKeyDown={e => e.key === "Enter" && attempt()}
@@ -145,18 +189,23 @@ function PinModal({ onClose, onSuccess }) {
 
 // ─── APP ──────────────────────────────────────────────────────────────────
 export default function App() {
+  const [authLevel, setAuthLevel] = useState(() => sessionStorage.getItem(AUTH_SESSION_KEY));
+  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
   const [data, setData]       = useState(null);
   const [tab, setTab]         = useState("Dashboard");
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [showPin, setShowPin] = useState(false);
+  const [showAdminPin, setShowAdminPin] = useState(false);
 
   useEffect(() => {
-    const d = loadData();
+    const d = loadData(selectedYear);
     setData(d);
-    saveData(d);
-  }, []);
+    saveData(d, selectedYear);
+  }, [selectedYear]);
 
-  const update = (newData) => { setData(newData); saveData(newData); };
+  const update = (newData) => { setData(newData); saveData(newData, selectedYear); };
+
+  if (authLevel === null) return (
+    <PinGate onAuth={(level) => { sessionStorage.setItem(AUTH_SESSION_KEY, level); setAuthLevel(level); }} />
+  );
 
   if (!data) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: C.bg, color: C.dark, fontFamily: "system-ui, sans-serif", fontSize: 18 }}>
@@ -164,6 +213,7 @@ export default function App() {
     </div>
   );
 
+  const isAdmin = authLevel === "admin";
   const allExpCats = [...EXPENSE_CATS, ...data.customExpCats];
   const allIncCats = [...INCOME_CATS,  ...data.customIncCats];
   const balance  = data.transactions.reduce((s, t) => s + (t.type === "income" ? t.amount : -t.amount), 0);
@@ -172,7 +222,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", color: C.text }}>
-      {showPin && <PinModal onClose={() => setShowPin(false)} onSuccess={() => setIsAdmin(true)} />}
+      {showAdminPin && <AdminPinModal onClose={() => setShowAdminPin(false)} onSuccess={() => { sessionStorage.setItem(AUTH_SESSION_KEY, "admin"); setAuthLevel("admin"); }} />}
 
       {/* Header */}
       <div style={{ background: "linear-gradient(135deg, #FFFFFF 0%, #6A89A7 100%)", padding: "10px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 4px 16px rgba(56,73,89,0.3)", borderRadius: "0 0 28px 28px" }}>
@@ -182,18 +232,31 @@ export default function App() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 9, color: "rgba(56,73,89,0.6)", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "700" }}>BALANCE</div>
+            <div style={{ fontSize: 9, color: "rgba(56,73,89,0.6)", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "700" }}>BALANCE {selectedYear}</div>
             <div style={{ fontSize: 22, fontWeight: "800", color: balance >= 0 ? "#384959" : "#B91C1C", lineHeight: 1.1 }}>
               {balance >= 0 ? "" : "-"}{fmt(balance)}
             </div>
           </div>
           <button
-            onClick={() => isAdmin ? setIsAdmin(false) : setShowPin(true)}
-            style={{ background: isAdmin ? "rgba(56,73,89,0.15)" : "rgba(56,73,89,0.12)", border: `1.5px solid ${isAdmin ? "#384959" : "rgba(56,73,89,0.35)"}`, borderRadius: 20, padding: "5px 13px", cursor: "pointer", fontSize: 12, color: isAdmin ? "#384959" : "#384959", fontFamily: "inherit", fontWeight: "700", whiteSpace: "nowrap" }}
+            onClick={() => {
+              if (isAdmin) { sessionStorage.setItem(AUTH_SESSION_KEY, "user"); setAuthLevel("user"); }
+              else { setShowAdminPin(true); }
+            }}
+            style={{ background: isAdmin ? "rgba(56,73,89,0.15)" : "rgba(56,73,89,0.12)", border: `1.5px solid ${isAdmin ? "#384959" : "rgba(56,73,89,0.35)"}`, borderRadius: 20, padding: "5px 13px", cursor: "pointer", fontSize: 12, color: "#384959", fontFamily: "inherit", fontWeight: "700", whiteSpace: "nowrap" }}
           >
-            {isAdmin ? "🔓 Admin" : "🔐 Sign In"}
+            {isAdmin ? "🔓 Admin" : "👁 Viewer"}
           </button>
         </div>
+      </div>
+
+      {/* Year Selector */}
+      <div style={{ background: "#fff", borderBottom: `1px solid ${C.border}`, padding: "8px 16px", display: "flex", gap: 8, overflowX: "auto" }}>
+        {AVAILABLE_YEARS.map(y => (
+          <button key={y} onClick={() => setSelectedYear(y)}
+            style={{ padding: "5px 16px", borderRadius: 20, border: `1.5px solid ${selectedYear === y ? C.gold : C.border}`, background: selectedYear === y ? C.goldLight : "transparent", color: selectedYear === y ? "#92672A" : C.sub, fontWeight: selectedYear === y ? "700" : "500", cursor: "pointer", fontSize: 12, fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 }}>
+            {y}
+          </button>
+        ))}
       </div>
 
       {/* Tab Bar */}
