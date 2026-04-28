@@ -1,19 +1,19 @@
 import { useState, useEffect } from "react";
 
-// ─── THEME (Spokane Spartans: gold + crimson) ─────────────────────────────
+// ─── THEME (Stormy Morning) ─────────────────────────────────────────────────
 const C = {
-  gold:       "#C9973C",
-  goldLight:  "#F5E6C8",
-  goldBorder: "#E6C87A",
-  crimson:    "#9B2335",
-  crimsonLight:"#FBEAEC",
-  dark:       "#1C1917",
-  bg:         "#F8F5F0",
+  gold:       "#6A89A7",
+  goldLight:  "#BDDDFC",
+  goldBorder: "#88BDF2",
+  crimson:    "#384959",
+  crimsonLight:"#EEF5FB",
+  dark:       "#384959",
+  bg:         "#F0F6FB",
   card:       "#FFFFFF",
-  border:     "#EDE8DF",
-  text:       "#1A1714",
-  sub:        "#78716C",
-  muted:      "#A8A29E",
+  border:     "#D4E8F8",
+  text:       "#1A2633",
+  sub:        "#6A89A7",
+  muted:      "#9AB3C9",
   green:      "#16A34A",
   greenLight: "#F0FDF4",
   greenBorder:"#BBF7D0",
@@ -175,7 +175,7 @@ export default function App() {
       {showPin && <PinModal onClose={() => setShowPin(false)} onSuccess={() => setIsAdmin(true)} />}
 
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #5C3A1E 0%, #2A1506 100%)", padding: "10px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", borderRadius: "0 0 28px 28px" }}>
+      <div style={{ background: "linear-gradient(135deg, #6A89A7 0%, #384959 100%)", padding: "10px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 4px 16px rgba(56,73,89,0.3)", borderRadius: "0 0 28px 28px" }}>
         <img src="/spcc-expenses/logo.png" alt="Spartans"
           style={{ height: 64, width: 64, objectFit: "cover", flexShrink: 0, borderRadius: "50%", border: `3px solid ${C.gold}`, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -189,7 +189,7 @@ export default function App() {
           </div>
           <button
             onClick={() => isAdmin ? setIsAdmin(false) : setShowPin(true)}
-            style={{ background: isAdmin ? `rgba(201,151,60,0.2)` : "rgba(255,255,255,0.08)", border: `1.5px solid ${isAdmin ? C.gold : "rgba(255,255,255,0.2)"}`, borderRadius: 20, padding: "5px 13px", cursor: "pointer", fontSize: 12, color: isAdmin ? C.gold : "rgba(255,255,255,0.55)", fontFamily: "inherit", fontWeight: "700", whiteSpace: "nowrap" }}
+            style={{ background: isAdmin ? `rgba(189,221,252,0.2)` : "rgba(255,255,255,0.08)", border: `1.5px solid ${isAdmin ? C.goldLight : "rgba(255,255,255,0.2)"}`, borderRadius: 20, padding: "5px 13px", cursor: "pointer", fontSize: 12, color: isAdmin ? C.goldLight : "rgba(255,255,255,0.65)", fontFamily: "inherit", fontWeight: "700", whiteSpace: "nowrap" }}
           >
             {isAdmin ? "🔓 Admin" : "🔐 Sign In"}
           </button>
