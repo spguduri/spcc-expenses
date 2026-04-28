@@ -23,7 +23,8 @@ const C = {
 };
 
 // ─── AUTH ─────────────────────────────────────────────────────────────────
-const ADMIN_PIN = "spcc2026"; // change this to your desired PIN
+// PIN is stored in .env.local (gitignored — never in the public repo)
+const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || "";
 
 // ─── DATA ─────────────────────────────────────────────────────────────────
 const EXPENSE_CATS = ["Umpiring", "Food & Drinks", "Travel/Gas", "League Fees", "Equipment/Balls"];
@@ -173,10 +174,8 @@ export default function App() {
 
       {/* Header */}
       <div style={{ background: C.dark, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.35)" }}>
-        <img src="/logo.png" alt="SPCC Logo" style={{ height: 46, width: 46, objectFit: "contain", flexShrink: 0 }} onError={e => { e.target.style.display = "none"; }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: "800", fontSize: 17, color: C.gold, letterSpacing: 0.3 }}>SPCC Expenses</div>
-          <div style={{ fontSize: 11, color: "rgba(201,151,60,0.55)", letterSpacing: 1.2, textTransform: "uppercase", marginTop: 1 }}>Spokane Spartans CC</div>
+          <div style={{ fontWeight: "800", fontSize: 19, color: C.gold, letterSpacing: 0.5 }}>spcc.expenses</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <div style={{ textAlign: "right" }}>
