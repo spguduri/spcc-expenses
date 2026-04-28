@@ -41,6 +41,7 @@ const SEED_DATA = {
     { id: 7, type: "income", date: "2026-04-07", category: "Membership Fees", amount: 400, note: "", paypal: false, memberName: "Hrishikesh Joshi" },
     { id: 8, type: "income", date: "2026-04-07", category: "Membership Fees", amount: 400, note: "Club dues 2026", paypal: false, memberName: "Krishnaswamy Jayaraman" },
     { id: 9, type: "income", date: "2026-04-06", category: "Membership Fees", amount: 400, note: "", paypal: false, memberName: "Sankaralingam Piramanayagam" },
+    { id: 10, type: "income", date: "2026-04-28", category: "Membership Fees", amount: 400, note: "Paid via Venmo to Sai", paypal: false, memberName: "Wasil Khan" },
   ],
   members: [
     { id: 1, name: "Krishnaswamy Jayaraman", email: "", phone: "", paid: true,  joinDate: "2026-04-07" },
@@ -51,13 +52,14 @@ const SEED_DATA = {
     { id: 6, name: "Dhruv Kumar",              email: "", phone: "", paid: true,  joinDate: "2026-04-08" },
     { id: 7, name: "Hrishikesh Joshi",         email: "", phone: "", paid: true,  joinDate: "2026-04-07" },
     { id: 8, name: "Sankaralingam Piramanayagam", email: "", phone: "", paid: true, joinDate: "2026-04-06" },
+    { id: 9, name: "Wasil Khan",               email: "", phone: "", paid: true,  joinDate: "2026-04-28" },
   ],
   events: [],
   customExpCats: [],
   customIncCats: [],
 };
 
-const STORAGE_KEY = "spcc_treasurer_data";
+const STORAGE_KEY = "spcc_treasurer_data_v2";
 
 function loadData() {
   try {
@@ -177,8 +179,6 @@ export default function App() {
         <img src="/spcc-expenses/logo.png" alt="Spartans"
           style={{ height: 64, width: 64, objectFit: "cover", flexShrink: 0, borderRadius: "50%", border: `3px solid ${C.gold}`, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: "800", fontSize: 16, color: C.gold, letterSpacing: 1, lineHeight: 1.2 }}>SPCC</div>
-          <div style={{ fontSize: 10, color: "rgba(201,151,60,0.55)", fontWeight: "600", letterSpacing: 1.5, textTransform: "uppercase", marginTop: 1 }}>Expenses</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
           <div style={{ textAlign: "right" }}>
