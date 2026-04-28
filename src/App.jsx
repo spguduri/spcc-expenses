@@ -63,7 +63,8 @@ const SEED_DATA = {
 
 const CURRENT_YEAR = new Date().getFullYear();
 const SEED_YEAR = 2026;
-const AVAILABLE_YEARS = [2024, 2025, 2026, 2027];
+const now = new Date();
+const AVAILABLE_YEARS = [2026, ...(now >= new Date("2027-01-01") ? [2027] : [])];
 const EMPTY_DATA = { transactions: [], members: [], events: [], customExpCats: [], customIncCats: [] };
 
 function storageKey(year) { return `spcc_treasurer_data_v2_${year}`; }
