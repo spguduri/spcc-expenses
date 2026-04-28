@@ -173,10 +173,13 @@ export default function App() {
       {showPin && <PinModal onClose={() => setShowPin(false)} onSuccess={() => setIsAdmin(true)} />}
 
       {/* Header */}
-      <div style={{ background: "linear-gradient(to right, #C49A6C 0%, #3D2410 100%)", padding: "4px 16px 4px 4px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 3px 12px rgba(0,0,0,0.15)", borderRadius: "46px 0 20px 46px" }}>
+      <div style={{ background: "linear-gradient(135deg, #5C3A1E 0%, #2A1506 100%)", padding: "10px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", borderRadius: "0 0 28px 28px" }}>
         <img src="/spcc-expenses/logo.png" alt="Spartans"
-          style={{ height: 84, width: 84, objectFit: "cover", flexShrink: 0, borderRadius: "50%", border: `3px solid ${C.gold}` }} />
-        <div style={{ flex: 1, minWidth: 0 }}></div>
+          style={{ height: 64, width: 64, objectFit: "cover", flexShrink: 0, borderRadius: "50%", border: `3px solid ${C.gold}`, boxShadow: "0 2px 8px rgba(0,0,0,0.4)" }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: "800", fontSize: 16, color: C.gold, letterSpacing: 1, lineHeight: 1.2 }}>SPCC</div>
+          <div style={{ fontSize: 10, color: "rgba(201,151,60,0.55)", fontWeight: "600", letterSpacing: 1.5, textTransform: "uppercase", marginTop: 1 }}>Expenses</div>
+        </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "600" }}>BALANCE</div>
