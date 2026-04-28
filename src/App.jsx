@@ -173,31 +173,41 @@ export default function App() {
       {showPin && <PinModal onClose={() => setShowPin(false)} onSuccess={() => setIsAdmin(true)} />}
 
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #2C2416 0%, #1C1917 100%)", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.25)", borderBottom: `2px solid ${C.gold}` }}>
-        <img src="/spcc-expenses/logo.png" alt="Spartans" style={{ height: 52, width: 52, objectFit: "contain", flexShrink: 0, filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.4))" }} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: 1.5, textTransform: "uppercase" }}>BALANCE</div>
-            <div style={{ fontSize: 20, fontWeight: "800", color: balance >= 0 ? "#86EFAC" : "#FCA5A5", lineHeight: 1.1 }}>{balance >= 0 ? "" : "-"}{fmt(balance)}</div>
-          </div>
-          <button
-            onClick={() => isAdmin ? setIsAdmin(false) : setShowPin(true)}
-            style={{ background: isAdmin ? "rgba(201,151,60,0.18)" : "rgba(255,255,255,0.07)", border: `1px solid ${isAdmin ? C.gold : "rgba(255,255,255,0.14)"}`, borderRadius: 20, padding: "4px 10px", cursor: "pointer", fontSize: 11, color: isAdmin ? C.gold : "rgba(255,255,255,0.5)", fontFamily: "inherit", fontWeight: "600", whiteSpace: "nowrap" }}
-          >
-            {isAdmin ? "🔓 Admin" : "🔐 Sign In"}
-          </button>
-        </div>
-      </div>
+      <div style={{ background: `linear-gradient(160deg, #F5E6C8 0%, #EDD89A 50%, #E2C97E 100%)`, padding: "14px 16px 0 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, paddingBottom: 14 }}>
+          {/* Logo */}
+          <img src="/spcc-expenses/logo.png" alt="Spartans"
+            style={{ height: 68, width: 68, objectFit: "contain", flexShrink: 0,
+              filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.18))" }} />
 
-      {/* Tab Bar */}
-      <div style={{ display: "flex", background: "#fff", borderBottom: `1px solid ${C.border}`, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-        {TABS.map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{ flex: 1, padding: "11px 4px 9px", border: "none", background: "transparent", color: tab === t ? C.gold : C.muted, cursor: "pointer", fontSize: 10, letterSpacing: 0.6, textTransform: "uppercase", fontFamily: "inherit", fontWeight: tab === t ? "700" : "500", borderBottom: `2px solid ${tab === t ? C.gold : "transparent"}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, transition: "color 0.15s" }}>
-            {icons[t]}{t}
-          </button>
-        ))}
+          {/* Middle spacer */}
+          <div style={{ flex: 1 }} />
+
+          {/* Right: balance + sign-in */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 10, color: "#92672A", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "700" }}>BALANCE</div>
+              <div style={{ fontSize: 24, fontWeight: "800", color: balance >= 0 ? "#166534" : "#991B1B", lineHeight: 1.1 }}>
+                {balance >= 0 ? "" : "-"}{fmt(balance)}
+              </div>
+            </div>
+            <button
+              onClick={() => isAdmin ? setIsAdmin(false) : setShowPin(true)}
+              style={{ background: isAdmin ? "rgba(28,25,23,0.12)" : "rgba(28,25,23,0.08)", border: `1.5px solid ${isAdmin ? "#92672A" : "rgba(146,103,42,0.35)"}`, borderRadius: 20, padding: "5px 14px", cursor: "pointer", fontSize: 12, color: isAdmin ? "#6B4C1E" : "#92672A", fontFamily: "inherit", fontWeight: "700", whiteSpace: "nowrap" }}
+            >
+              {isAdmin ? "🔓 Admin" : "🔐 Sign In"}
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Bar — sits on the gold, bottom-rounded white panel */}
+        <div style={{ background: "#fff", borderRadius: "14px 14px 0 0", display: "flex", boxShadow: "0 -2px 8px rgba(0,0,0,0.06)" }}>
+          {TABS.map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{ flex: 1, padding: "11px 4px 10px", border: "none", background: "transparent", color: tab === t ? C.gold : C.muted, cursor: "pointer", fontSize: 10, letterSpacing: 0.6, textTransform: "uppercase", fontFamily: "inherit", fontWeight: tab === t ? "700" : "500", borderBottom: `2px solid ${tab === t ? C.gold : "transparent"}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, transition: "color 0.15s", borderRadius: tab === t ? "14px 14px 0 0" : 0 }}>
+              {icons[t]}{t}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Content */}
