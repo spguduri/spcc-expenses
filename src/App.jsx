@@ -183,7 +183,7 @@ export default function App() {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 9, color: "rgba(56,73,89,0.6)", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "700" }}>BALANCE</div>
-            <div style={{ fontSize: 22, fontWeight: "800", color: balance >= 0 ? "#1A6B3C" : "#B91C1C", lineHeight: 1.1 }}>
+            <div style={{ fontSize: 22, fontWeight: "800", color: balance >= 0 ? "#384959" : "#B91C1C", lineHeight: 1.1 }}>
               {balance >= 0 ? "" : "-"}{fmt(balance)}
             </div>
           </div>
