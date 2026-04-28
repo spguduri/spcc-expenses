@@ -173,13 +173,10 @@ export default function App() {
       {showPin && <PinModal onClose={() => setShowPin(false)} onSuccess={() => setIsAdmin(true)} />}
 
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #2A1810 0%, #1C1410 100%)", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 3px 12px rgba(0,0,0,0.3)", borderRadius: "0 0 20px 20px" }}>
+      <div style={{ background: "linear-gradient(135deg, #4A3728 0%, #2E2218 100%)", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 3px 12px rgba(0,0,0,0.2)", borderRadius: "0 0 20px 20px" }}>
         <img src="/spcc-expenses/logo.png" alt="Spartans"
           style={{ height: 56, width: 56, objectFit: "cover", flexShrink: 0, borderRadius: "50%", border: `2px solid ${C.gold}` }} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: "800", fontSize: 18, color: C.gold, letterSpacing: 0.3, lineHeight: 1.2 }}>Spokane Spartans</div>
-          <div style={{ fontSize: 11, color: "rgba(201,151,60,0.5)", fontWeight: "600", letterSpacing: 1, textTransform: "uppercase", marginTop: 1 }}>Cricket Club</div>
-        </div>
+        <div style={{ flex: 1, minWidth: 0 }}></div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "600" }}>BALANCE</div>
