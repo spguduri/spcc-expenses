@@ -133,7 +133,7 @@ function PinGate({ onAuth }) {
       <div style={{ background: "#fff", borderRadius: 20, padding: "36px 28px", width: "100%", maxWidth: 340, boxShadow: "0 20px 60px rgba(56,73,89,0.15)", border: `1px solid ${C.border}` }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <img src="/spcc-expenses/logo.png" alt="SPCC" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: `3px solid ${C.gold}`, marginBottom: 16 }} onError={e => { e.target.style.display = "none"; }} />
-          <div style={{ fontWeight: "800", fontSize: 20, color: C.dark, marginBottom: 6 }}>Spokane Spartans CC</div>
+          <div style={{ fontWeight: "800", fontSize: 20, color: C.dark, marginBottom: 6 }}>SPCC</div>
           <div style={{ fontSize: 14, color: C.sub }}>Enter your PIN to access finances</div>
           <div style={{ fontSize: 12, color: C.muted, marginTop: 8 }}>Don't have a PIN? Contact the club admin.</div>
         </div>
@@ -252,8 +252,7 @@ export default function App() {
               {balance >= 0 ? "" : "-"}{fmt(balance)}
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button
+          <button
               onClick={() => {
                 if (isAdmin) { sessionStorage.setItem(AUTH_SESSION_KEY, "user"); setAuthLevel("user"); }
                 else { setShowAdminPin(true); }
@@ -262,18 +261,6 @@ export default function App() {
             >
               {isAdmin ? "🔓 Admin" : "👁 Viewer"}
             </button>
-            <button
-              onClick={signOut}
-              title="Sign out"
-              style={{ background: "rgba(220,38,38,0.08)", border: "1.5px solid rgba(220,38,38,0.25)", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                <polyline points="16 17 21 12 16 7"/>
-                <line x1="21" y1="12" x2="9" y2="12"/>
-              </svg>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -297,12 +284,26 @@ export default function App() {
       </div>
 
       {/* Content */}
-      <div style={{ padding: "16px", maxWidth: 640, margin: "0 auto" }}>
+      <div style={{ padding: "16px 16px 80px", maxWidth: 640, margin: "0 auto" }}>
         {tab === "Dashboard" && <Dashboard data={data} totalIn={totalIn} totalOut={totalOut} />}
         {tab === "Finances"  && <Finances  data={data} update={update} allExpCats={allExpCats} allIncCats={allIncCats} isAdmin={isAdmin} />}
         {tab === "Members"   && <Members   data={data} update={update} isAdmin={isAdmin} />}
         {tab === "Events"    && <Events    data={data} update={update} isAdmin={isAdmin} />}
       </div>
+
+      {/* Sign Out — fixed bottom left */}
+      <button
+        onClick={signOut}
+        title="Sign out"
+        style={{ position: "fixed", bottom: 20, left: 20, zIndex: 50, background: "#fff", border: "1.5px solid rgba(220,38,38,0.3)", borderRadius: 12, padding: "9px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 7, boxShadow: "0 2px 10px rgba(0,0,0,0.12)", fontFamily: "inherit" }}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span style={{ fontSize: 12, fontWeight: "700", color: "#DC2626" }}>Sign Out</span>
+      </button>
     </div>
   );
 }
@@ -405,6 +406,7 @@ function Finances({ data, update, allExpCats, allIncCats, isAdmin }) {
 
       {isAdmin && showForm && (
         <FormCard>
+          {/* form contents unchanged */}
           <div>
             <FieldLabel>Type</FieldLabel>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
@@ -430,6 +432,22 @@ function Finances({ data, update, allExpCats, allIncCats, isAdmin }) {
         </FormCard>
       )}
 
+      <Card title="Transactions">
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          {["all", "income", "expense"].map(f => (
+            <button key={f} onClick={() => setFilter(f)} style={{ ...pillStyle, background: filter === f ? C.goldLight : "#F9FAFB", color: filter === f ? "#92672A" : C.sub, borderColor: filter === f ? C.goldBorder : C.border, fontWeight: filter === f ? "700" : "500" }}>
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+        {filtered.length === 0 ? <EmptyState text="No transactions" /> : filtered.map(t => (
+          <div key={t.id} style={{ display: "flex", alignItems: "center", borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ flex: 1 }}><TxRow t={t} /></div>
+            {isAdmin && <button onClick={() => delTx(t.id)} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, padding: "0 4px", lineHeight: 1 }} title="Delete">×</button>}
+          </div>
+        ))}
+      </Card>
+
       {isAdmin && (
         <Card title="Custom Categories">
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
@@ -452,22 +470,6 @@ function Finances({ data, update, allExpCats, allIncCats, isAdmin }) {
           )}
         </Card>
       )}
-
-      <Card title="Transactions">
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          {["all", "income", "expense"].map(f => (
-            <button key={f} onClick={() => setFilter(f)} style={{ ...pillStyle, background: filter === f ? C.goldLight : "#F9FAFB", color: filter === f ? "#92672A" : C.sub, borderColor: filter === f ? C.goldBorder : C.border, fontWeight: filter === f ? "700" : "500" }}>
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
-        {filtered.length === 0 ? <EmptyState text="No transactions" /> : filtered.map(t => (
-          <div key={t.id} style={{ display: "flex", alignItems: "center", borderBottom: `1px solid ${C.border}` }}>
-            <div style={{ flex: 1 }}><TxRow t={t} /></div>
-            {isAdmin && <button onClick={() => delTx(t.id)} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, padding: "0 4px", lineHeight: 1 }} title="Delete">×</button>}
-          </div>
-        ))}
-      </Card>
     </div>
   );
 }
