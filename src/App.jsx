@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "./supabase";
 
 // ─── THEME (Stormy Morning) ─────────────────────────────────────────────────
 const C = {
@@ -32,53 +33,34 @@ const AUTH_SESSION_KEY = "spcc_auth_level";
 const EXPENSE_CATS = ["Umpiring", "Food & Drinks", "Travel/Gas", "League Fees", "Equipment/Balls"];
 const INCOME_CATS  = ["Membership Fees", "PayPal Transfer", "Fundraising", "Other Income"];
 
-const SEED_DATA = {
-  transactions: [
-    { id: 1, type: "income", date: "2026-04-11", category: "Membership Fees", amount: 400, note: "For Bhagat club fees 2026", paypal: false, memberName: "Krishnaswamy Jayaraman" },
-    { id: 2, type: "income", date: "2026-04-11", category: "Membership Fees", amount: 250, note: "", paypal: false, memberName: "Bilal Hasan" },
-    { id: 3, type: "income", date: "2026-04-10", category: "Membership Fees", amount: 200, note: "Paying half the amount now and half next week. Glen Coelho", paypal: false, memberName: "Glen Coelho" },
-    { id: 4, type: "income", date: "2026-04-10", category: "Membership Fees", amount: 400, note: "Spokane Spartans Membership", paypal: false, memberName: "Pavan Pativada" },
-    { id: 5, type: "income", date: "2026-04-08", category: "Membership Fees", amount: 400, note: "Cricket season 2026🏏", paypal: false, memberName: "Paramjot Singh" },
-    { id: 6, type: "income", date: "2026-04-08", category: "Membership Fees", amount: 400, note: "", paypal: false, memberName: "Dhruv Kumar" },
-    { id: 7, type: "income", date: "2026-04-07", category: "Membership Fees", amount: 400, note: "", paypal: false, memberName: "Hrishikesh Joshi" },
-    { id: 8, type: "income", date: "2026-04-07", category: "Membership Fees", amount: 400, note: "Club dues 2026", paypal: false, memberName: "Krishnaswamy Jayaraman" },
-    { id: 9, type: "income", date: "2026-04-06", category: "Membership Fees", amount: 400, note: "", paypal: false, memberName: "Sankaralingam Piramanayagam" },
-    { id: 10, type: "income", date: "2026-04-28", category: "Membership Fees", amount: 400, note: "Paid via Venmo to Sai", paypal: false, memberName: "Wasil Khan" },
-  ],
-  members: [
-    { id: 1, name: "Krishnaswamy Jayaraman", email: "", phone: "", paid: true,  joinDate: "2026-04-07" },
-    { id: 2, name: "Bilal Hasan",             email: "", phone: "", paid: true,  joinDate: "2026-04-11" },
-    { id: 3, name: "Glen Coelho",              email: "", phone: "", paid: false, joinDate: "2026-04-10" },
-    { id: 4, name: "Pavan Pativada",           email: "", phone: "", paid: true,  joinDate: "2026-04-10" },
-    { id: 5, name: "Paramjot Singh",           email: "", phone: "", paid: true,  joinDate: "2026-04-08" },
-    { id: 6, name: "Dhruv Kumar",              email: "", phone: "", paid: true,  joinDate: "2026-04-08" },
-    { id: 7, name: "Hrishikesh Joshi",         email: "", phone: "", paid: true,  joinDate: "2026-04-07" },
-    { id: 8, name: "Sankaralingam Piramanayagam", email: "", phone: "", paid: true, joinDate: "2026-04-06" },
-    { id: 9, name: "Wasil Khan",               email: "", phone: "", paid: true,  joinDate: "2026-04-28" },
-  ],
-  events: [],
-  customExpCats: [],
-  customIncCats: [],
-};
-
 const CURRENT_YEAR = new Date().getFullYear();
-const SEED_YEAR = 2026;
 const now = new Date();
 const AVAILABLE_YEARS = [2026, ...(now >= new Date("2027-01-01") ? [2027] : [])];
-const EMPTY_DATA = { transactions: [], members: [], events: [], customExpCats: [], customIncCats: [] };
 
-function storageKey(year) { return `spcc_treasurer_data_v2_${year}`; }
-
-function loadData(year) {
-  try {
-    const s = localStorage.getItem(storageKey(year));
-    if (s) return JSON.parse(s);
-    return year === SEED_YEAR ? SEED_DATA : { ...EMPTY_DATA };
-  } catch { return year === SEED_YEAR ? SEED_DATA : { ...EMPTY_DATA }; }
+// ─── SUPABASE HELPERS ─────────────────────────────────────────────────────
+function txFromRow(r) {
+  return { id: r.id, type: r.type, date: r.date, category: r.category, amount: Number(r.amount), note: r.note || "", paypal: r.paypal, memberName: r.member_name || "" };
 }
-
-function saveData(d, year) {
-  try { localStorage.setItem(storageKey(year), JSON.stringify(d)); } catch {}
+function memberFromRow(r) {
+  return { id: r.id, name: r.name, email: r.email || "", phone: r.phone || "", paid: r.paid, joinDate: r.join_date, duesAmount: r.dues_amount != null ? Number(r.dues_amount) : null };
+}
+function eventFromRow(r) {
+  return { id: r.id, name: r.name, type: r.type, date: r.date, location: r.location || "", notes: r.notes || "", cost: Number(r.cost) || 0 };
+}
+async function fetchAllData(year) {
+  const [txRes, memRes, evRes, catRes] = await Promise.all([
+    supabase.from("transactions").select("*").eq("year", year).order("date", { ascending: false }),
+    supabase.from("members").select("*").eq("year", year),
+    supabase.from("events").select("*").eq("year", year).order("date", { ascending: false }),
+    supabase.from("custom_categories").select("*").eq("year", year),
+  ]);
+  return {
+    transactions: (txRes.data || []).map(txFromRow),
+    members: (memRes.data || []).map(memberFromRow),
+    events: (evRes.data || []).map(eventFromRow),
+    customExpCats: (catRes.data || []).filter(c => c.cat_type === "expense").map(c => c.name),
+    customIncCats: (catRes.data || []).filter(c => c.cat_type === "income").map(c => c.name),
+  };
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────
@@ -211,12 +193,61 @@ export default function App() {
   }, [authLevel]);
 
   useEffect(() => {
-    const d = loadData(selectedYear);
-    setData(d);
-    saveData(d, selectedYear);
+    const reload = async () => { setData(null); setData(await fetchAllData(selectedYear)); };
+    reload();
   }, [selectedYear]);
 
-  const update = (newData) => { setData(newData); saveData(newData, selectedYear); };
+  // ── DB operations ────────────────────────────────────────────────────────
+  const addTx = async (form) => {
+    await supabase.from("transactions").insert({
+      year: selectedYear, type: form.type, date: form.date,
+      category: form.category, amount: form.amount,
+      note: form.note || "", paypal: form.paypal || false,
+      member_name: form.memberName || "",
+    });
+    setData(await fetchAllData(selectedYear));
+  };
+  const delTx = async (id) => {
+    await supabase.from("transactions").delete().eq("id", id);
+    setData(d => ({ ...d, transactions: d.transactions.filter(t => t.id !== id) }));
+  };
+  const addCat = async (catType, name) => {
+    await supabase.from("custom_categories").insert({ year: selectedYear, cat_type: catType, name });
+    setData(await fetchAllData(selectedYear));
+  };
+  const addMember = async (form) => {
+    await supabase.from("members").insert({
+      year: selectedYear, name: form.name, email: form.email || "",
+      phone: form.phone || "", paid: form.paid || false,
+      join_date: form.joinDate || today(),
+    });
+    setData(await fetchAllData(selectedYear));
+  };
+  const togglePaid = async (id) => {
+    const member = data.members.find(m => m.id === id);
+    await supabase.from("members").update({ paid: !member.paid }).eq("id", id);
+    setData(d => ({ ...d, members: d.members.map(m => m.id === id ? { ...m, paid: !m.paid } : m) }));
+  };
+  const delMember = async (id) => {
+    await supabase.from("members").delete().eq("id", id);
+    setData(d => ({ ...d, members: d.members.filter(m => m.id !== id) }));
+  };
+  const saveAmt = async (id, val) => {
+    await supabase.from("members").update({ dues_amount: val }).eq("id", id);
+    setData(d => ({ ...d, members: d.members.map(m => m.id === id ? { ...m, duesAmount: val } : m) }));
+  };
+  const addEvent = async (form) => {
+    await supabase.from("events").insert({
+      year: selectedYear, name: form.name, type: form.type,
+      date: form.date, location: form.location || "",
+      notes: form.notes || "", cost: form.cost || 0,
+    });
+    setData(await fetchAllData(selectedYear));
+  };
+  const delEvent = async (id) => {
+    await supabase.from("events").delete().eq("id", id);
+    setData(d => ({ ...d, events: d.events.filter(e => e.id !== id) }));
+  };
 
   if (authLevel === null) return (
     <PinGate onAuth={(level) => { sessionStorage.setItem(AUTH_SESSION_KEY, level); setAuthLevel(level); }} />
@@ -286,9 +317,9 @@ export default function App() {
       {/* Content */}
       <div style={{ padding: "16px 16px 80px", maxWidth: 640, margin: "0 auto" }}>
         {tab === "Dashboard" && <Dashboard data={data} totalIn={totalIn} totalOut={totalOut} />}
-        {tab === "Finances"  && <Finances  data={data} update={update} allExpCats={allExpCats} allIncCats={allIncCats} isAdmin={isAdmin} />}
-        {tab === "Members"   && <Members   data={data} update={update} isAdmin={isAdmin} />}
-        {tab === "Events"    && <Events    data={data} update={update} isAdmin={isAdmin} />}
+        {tab === "Finances"  && <Finances  data={data} isAdmin={isAdmin} allExpCats={allExpCats} allIncCats={allIncCats} onAddTx={addTx} onDelTx={delTx} onAddCat={addCat} />}
+        {tab === "Members"   && <Members   data={data} isAdmin={isAdmin} onAddMember={addMember} onTogglePaid={togglePaid} onDelMember={delMember} onSaveAmt={saveAmt} />}
+        {tab === "Events"    && <Events    data={data} isAdmin={isAdmin} onAddEvent={addEvent} onDelEvent={delEvent} />}
       </div>
 
       {/* Sign Out — fixed bottom left */}
@@ -370,7 +401,7 @@ function Dashboard({ data, totalIn, totalOut }) {
 }
 
 // ─── FINANCES ────────────────────────────────────────────────────────────
-function Finances({ data, update, allExpCats, allIncCats, isAdmin }) {
+function Finances({ data, isAdmin, allExpCats, allIncCats, onAddTx, onDelTx, onAddCat }) {
   const blank = { type: "expense", date: today(), category: allExpCats[0], amount: "", note: "", paypal: false, memberName: "" };
   const [form, setForm]       = useState(blank);
   const [showForm, setShowForm] = useState(false);
@@ -378,16 +409,15 @@ function Finances({ data, update, allExpCats, allIncCats, isAdmin }) {
   const [catType, setCatType] = useState("expense");
   const [filter, setFilter]   = useState("all");
 
-  const addTx = () => {
+  const addTx = async () => {
     if (!form.amount || isNaN(form.amount) || +form.amount <= 0) return;
-    update({ ...data, transactions: [{ ...form, id: Date.now(), amount: parseFloat(form.amount) }, ...data.transactions] });
+    await onAddTx({ ...form, amount: parseFloat(form.amount) });
     setForm(blank); setShowForm(false);
   };
-  const delTx = (id) => update({ ...data, transactions: data.transactions.filter(t => t.id !== id) });
-  const addCat = () => {
+  const delTx = async (id) => { await onDelTx(id); };
+  const addCat = async () => {
     if (!newCat.trim()) return;
-    if (catType === "expense") update({ ...data, customExpCats: [...data.customExpCats, newCat.trim()] });
-    else update({ ...data, customIncCats: [...data.customIncCats, newCat.trim()] });
+    await onAddCat(catType, newCat.trim());
     setNewCat("");
   };
 
@@ -475,25 +505,23 @@ function Finances({ data, update, allExpCats, allIncCats, isAdmin }) {
 }
 
 // ─── MEMBERS ─────────────────────────────────────────────────────────────
-function Members({ data, update, isAdmin }) {
+function Members({ data, isAdmin, onAddMember, onTogglePaid, onDelMember, onSaveAmt }) {
   const [form, setForm]         = useState({ name: "", email: "", phone: "", paid: false, joinDate: today() });
   const [showForm, setShowForm] = useState(false);
   const [editingAmtId, setEditingAmtId] = useState(null);
   const [editingAmt, setEditingAmt]     = useState("");
 
-  const addMember  = () => {
+  const addMember = async () => {
     if (!form.name.trim()) return;
-    update({ ...data, members: [...data.members, { ...form, id: Date.now() }] });
+    await onAddMember(form);
     setForm({ name: "", email: "", phone: "", paid: false, joinDate: today() }); setShowForm(false);
   };
-  const togglePaid = (id) => update({ ...data, members: data.members.map(m => m.id === id ? { ...m, paid: !m.paid } : m) });
-  const delMember  = (id) => update({ ...data, members: data.members.filter(m => m.id !== id) });
+  const togglePaid = async (id) => { await onTogglePaid(id); };
+  const delMember  = async (id) => { await onDelMember(id); };
 
-  const saveAmt = (id) => {
+  const saveAmt = async (id) => {
     const val = parseFloat(editingAmt);
-    if (!isNaN(val) && val >= 0) {
-      update({ ...data, members: data.members.map(m => m.id === id ? { ...m, duesAmount: val } : m) });
-    }
+    if (!isNaN(val) && val >= 0) { await onSaveAmt(id, val); }
     setEditingAmtId(null);
   };
 
@@ -578,17 +606,17 @@ function Members({ data, update, isAdmin }) {
 }
 
 // ─── EVENTS ──────────────────────────────────────────────────────────────
-function Events({ data, update, isAdmin }) {
+function Events({ data, isAdmin, onAddEvent, onDelEvent }) {
   const [form, setForm]         = useState({ name: "", type: "Game", date: today(), location: "", notes: "", cost: "" });
   const [showForm, setShowForm] = useState(false);
   const EVENT_TYPES = ["Game", "Practice", "Tournament", "Meeting", "Fundraiser", "Other"];
 
-  const addEvent = () => {
+  const addEvent = async () => {
     if (!form.name.trim()) return;
-    update({ ...data, events: [...data.events, { ...form, id: Date.now(), cost: form.cost ? parseFloat(form.cost) : 0 }] });
+    await onAddEvent({ ...form, cost: form.cost ? parseFloat(form.cost) : 0 });
     setForm({ name: "", type: "Game", date: today(), location: "", notes: "", cost: "" }); setShowForm(false);
   };
-  const delEvent = (id) => update({ ...data, events: data.events.filter(e => e.id !== id) });
+  const delEvent = async (id) => { await onDelEvent(id); };
   const sorted = [...data.events].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
