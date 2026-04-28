@@ -121,7 +121,7 @@ function PinModal({ onClose, onSuccess }) {
       <div style={{ background: "#fff", borderRadius: 16, padding: 28, width: "100%", maxWidth: 320, boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
         <div style={{ textAlign: "center", marginBottom: 20 }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>🔐</div>
-          <div style={{ fontWeight: "800", fontSize: 18, color: C.dark }}>Treasurer Access</div>
+          <div style={{ fontWeight: "800", fontSize: 18, color: C.dark }}>Admin Access</div>
           <div style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Enter your PIN to unlock editing</div>
         </div>
         <input
@@ -173,9 +173,9 @@ export default function App() {
       {showPin && <PinModal onClose={() => setShowPin(false)} onSuccess={() => setIsAdmin(true)} />}
 
       {/* Header */}
-      <div style={{ background: C.dark, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.35)" }}>
+      <div style={{ background: "linear-gradient(135deg, #2C2416 0%, #1C1917 100%)", padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 12px rgba(0,0,0,0.25)", borderBottom: `2px solid ${C.gold}` }}>
+        <img src="/spcc-expenses/logo.png" alt="Spartans" style={{ height: 52, width: 52, objectFit: "contain", flexShrink: 0, filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.4))" }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: "800", fontSize: 19, color: C.gold, letterSpacing: 0.5 }}>spcc.expenses</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <div style={{ textAlign: "right" }}>
@@ -186,7 +186,7 @@ export default function App() {
             onClick={() => isAdmin ? setIsAdmin(false) : setShowPin(true)}
             style={{ background: isAdmin ? "rgba(201,151,60,0.18)" : "rgba(255,255,255,0.07)", border: `1px solid ${isAdmin ? C.gold : "rgba(255,255,255,0.14)"}`, borderRadius: 20, padding: "4px 10px", cursor: "pointer", fontSize: 11, color: isAdmin ? C.gold : "rgba(255,255,255,0.5)", fontFamily: "inherit", fontWeight: "600", whiteSpace: "nowrap" }}
           >
-            {isAdmin ? "🔓 Treasurer" : "🔐 Sign In"}
+            {isAdmin ? "🔓 Admin" : "🔐 Sign In"}
           </button>
         </div>
       </div>
@@ -303,7 +303,7 @@ function Finances({ data, update, allExpCats, allIncCats, isAdmin }) {
       )}
       {!isAdmin && (
         <div style={{ background: C.goldLight, border: `1px solid ${C.goldBorder}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#92672A", display: "flex", alignItems: "center", gap: 8 }}>
-          <span>🔐</span> Sign in as Treasurer to add or edit transactions.
+          <span>🔐</span> Sign in as Admin to add or edit transactions.
         </div>
       )}
 
