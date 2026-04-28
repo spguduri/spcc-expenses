@@ -478,6 +478,8 @@ function Finances({ data, update, allExpCats, allIncCats, isAdmin }) {
 function Members({ data, update, isAdmin }) {
   const [form, setForm]         = useState({ name: "", email: "", phone: "", paid: false, joinDate: today() });
   const [showForm, setShowForm] = useState(false);
+  const [editingAmtId, setEditingAmtId] = useState(null);
+  const [editingAmt, setEditingAmt]     = useState("");
 
   const addMember  = () => {
     if (!form.name.trim()) return;
@@ -487,8 +489,17 @@ function Members({ data, update, isAdmin }) {
   const togglePaid = (id) => update({ ...data, members: data.members.map(m => m.id === id ? { ...m, paid: !m.paid } : m) });
   const delMember  = (id) => update({ ...data, members: data.members.filter(m => m.id !== id) });
 
+  const saveAmt = (id) => {
+    const val = parseFloat(editingAmt);
+    if (!isNaN(val) && val >= 0) {
+      update({ ...data, members: data.members.map(m => m.id === id ? { ...m, duesAmount: val } : m) });
+    }
+    setEditingAmtId(null);
+  };
+
   const paid = data.members.filter(m => m.paid).length;
-  const amountPaidFor = (name) => data.transactions.filter(t => t.type === "income" && t.memberName === name).reduce((s, t) => s + t.amount, 0);
+  const amountPaidFor = (m) => m.duesAmount != null ? m.duesAmount :
+    data.transactions.filter(t => t.type === "income" && t.memberName === m.name).reduce((s, t) => s + t.amount, 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -516,15 +527,37 @@ function Members({ data, update, isAdmin }) {
 
       <Card title={`Members (${data.members.length})`}>
         {data.members.length === 0 ? <EmptyState text="No members added yet" /> : data.members.map(m => {
-          const amtPaid = amountPaidFor(m.name);
+          const amtPaid = amountPaidFor(m);
+          const isEditingAmt = editingAmtId === m.id;
           return (
             <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: `1px solid ${C.border}` }}>
               <Avatar name={m.name} size={40} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: "600", color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</div>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>
-                  {amtPaid > 0 ? <span style={{ color: C.green, fontWeight: "700" }}>{fmt(amtPaid)} paid</span> : <span>No payments</span>}
-                  {m.email ? ` · ${m.email}` : ""}
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 3, display: "flex", alignItems: "center", gap: 6 }}>
+                  {isAdmin && isEditingAmt ? (
+                    <>
+                      <span style={{ color: C.green, fontWeight: "700" }}>$</span>
+                      <input
+                        type="number"
+                        autoFocus
+                        value={editingAmt}
+                        onChange={e => setEditingAmt(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") saveAmt(m.id); if (e.key === "Escape") setEditingAmtId(null); }}
+                        style={{ ...inputStyle, width: 90, padding: "2px 6px", fontSize: 12, display: "inline-block" }}
+                      />
+                      <button onClick={() => saveAmt(m.id)} style={{ fontSize: 11, color: C.green, background: "transparent", border: "none", cursor: "pointer", fontWeight: "700", fontFamily: "inherit", padding: 0 }}>✓</button>
+                      <button onClick={() => setEditingAmtId(null)} style={{ fontSize: 11, color: C.muted, background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>✕</button>
+                    </>
+                  ) : (
+                    <span
+                      onClick={() => { if (isAdmin) { setEditingAmtId(m.id); setEditingAmt(amtPaid.toString()); } }}
+                      style={{ color: amtPaid > 0 ? C.green : C.muted, fontWeight: amtPaid > 0 ? "700" : "400", cursor: isAdmin ? "pointer" : "default", borderBottom: isAdmin ? `1px dashed ${C.muted}` : "none" }}
+                    >
+                      {amtPaid > 0 ? `${fmt(amtPaid)} paid` : "No payments"}
+                    </span>
+                  )}
+                  {m.email ? <span>· {m.email}</span> : ""}
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
