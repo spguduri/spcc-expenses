@@ -188,6 +188,8 @@ function AdminPinModal({ onClose, onSuccess }) {
   );
 }
 
+const INACTIVITY_MS = 10 * 60 * 1000; // 10 minutes
+
 // ─── APP ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [authLevel, setAuthLevel] = useState(() => sessionStorage.getItem(AUTH_SESSION_KEY));
@@ -195,6 +197,18 @@ export default function App() {
   const [data, setData]       = useState(null);
   const [tab, setTab]         = useState("Dashboard");
   const [showAdminPin, setShowAdminPin] = useState(false);
+
+  const signOut = () => { sessionStorage.removeItem(AUTH_SESSION_KEY); setAuthLevel(null); };
+
+  // 10-minute inactivity auto-logout
+  useEffect(() => {
+    if (!authLevel) return;
+    let timer = setTimeout(signOut, INACTIVITY_MS);
+    const reset = () => { clearTimeout(timer); timer = setTimeout(signOut, INACTIVITY_MS); };
+    const events = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"];
+    events.forEach(e => window.addEventListener(e, reset, { passive: true }));
+    return () => { clearTimeout(timer); events.forEach(e => window.removeEventListener(e, reset)); };
+  }, [authLevel]);
 
   useEffect(() => {
     const d = loadData(selectedYear);
@@ -238,15 +252,28 @@ export default function App() {
               {balance >= 0 ? "" : "-"}{fmt(balance)}
             </div>
           </div>
-          <button
-            onClick={() => {
-              if (isAdmin) { sessionStorage.setItem(AUTH_SESSION_KEY, "user"); setAuthLevel("user"); }
-              else { setShowAdminPin(true); }
-            }}
-            style={{ background: isAdmin ? "rgba(56,73,89,0.15)" : "rgba(56,73,89,0.12)", border: `1.5px solid ${isAdmin ? "#384959" : "rgba(56,73,89,0.35)"}`, borderRadius: 20, padding: "5px 13px", cursor: "pointer", fontSize: 12, color: "#384959", fontFamily: "inherit", fontWeight: "700", whiteSpace: "nowrap" }}
-          >
-            {isAdmin ? "🔓 Admin" : "👁 Viewer"}
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button
+              onClick={() => {
+                if (isAdmin) { sessionStorage.setItem(AUTH_SESSION_KEY, "user"); setAuthLevel("user"); }
+                else { setShowAdminPin(true); }
+              }}
+              style={{ background: isAdmin ? "rgba(56,73,89,0.15)" : "rgba(56,73,89,0.12)", border: `1.5px solid ${isAdmin ? "#384959" : "rgba(56,73,89,0.35)"}`, borderRadius: 20, padding: "5px 13px", cursor: "pointer", fontSize: 12, color: "#384959", fontFamily: "inherit", fontWeight: "700", whiteSpace: "nowrap" }}
+            >
+              {isAdmin ? "🔓 Admin" : "👁 Viewer"}
+            </button>
+            <button
+              onClick={signOut}
+              title="Sign out"
+              style={{ background: "rgba(220,38,38,0.08)", border: "1.5px solid rgba(220,38,38,0.25)", borderRadius: "50%", width: 30, height: 30, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
