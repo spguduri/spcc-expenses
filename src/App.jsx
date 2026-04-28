@@ -173,7 +173,7 @@ export default function App() {
       {showPin && <PinModal onClose={() => setShowPin(false)} onSuccess={() => setIsAdmin(true)} />}
 
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #4A3728 0%, #2E2218 100%)", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 3px 12px rgba(0,0,0,0.2)", borderRadius: "0 0 20px 20px" }}>
+      <div style={{ background: "linear-gradient(135deg, #7D5A3C 0%, #5C3D20 100%)", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 3px 12px rgba(0,0,0,0.15)", borderRadius: "0 0 20px 20px" }}>
         <img src="/spcc-expenses/logo.png" alt="Spartans"
           style={{ height: 56, width: 56, objectFit: "cover", flexShrink: 0, borderRadius: "50%", border: `2px solid ${C.gold}` }} />
         <div style={{ flex: 1, minWidth: 0 }}></div>
