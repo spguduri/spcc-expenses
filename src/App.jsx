@@ -39,7 +39,7 @@ const AVAILABLE_YEARS = [2026, ...(now >= new Date("2027-01-01") ? [2027] : [])]
 
 // ─── SUPABASE HELPERS ─────────────────────────────────────────────────────
 function txFromRow(r) {
-  return { id: r.id, type: r.type, date: r.date, category: r.category, amount: Number(r.amount), note: r.note || "", paypal: r.paypal, memberName: r.member_name || "" };
+  return { id: r.id, type: r.type, date: r.date, category: r.category, amount: Number(r.amount), note: r.note || "", paypal: r.paypal, memberName: r.member_name || "", receiptUrl: r.receipt_url || null };
 }
 function memberFromRow(r) {
   return { id: r.id, name: r.name, email: r.email || "", phone: r.phone || "", paid: r.paid, joinDate: r.join_date, duesAmount: r.dues_amount != null ? Number(r.dues_amount) : null };
@@ -90,6 +90,44 @@ function Avatar({ name, size = 36 }) {
       {getInitials(name)}
     </div>
   );
+}
+
+// ─── RECEIPT GENERATOR ───────────────────────────────────────────────────
+function generateReceipt(t, year, receiptNum) {
+  const w = window.open("", "_blank");
+  const receiptId = `${year}-${String(receiptNum).padStart(3, "0")}`;
+  const dateStr = new Date(t.date + "T00:00:00").toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  const logoUrl = window.location.origin + "/spcc-expenses/logo.png";
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt ${receiptId}</title>
+<style>
+  body{font-family:Arial,sans-serif;max-width:520px;margin:40px auto;padding:24px;color:#1a1a1a}
+  .hdr{text-align:center;border-bottom:3px solid #C9973C;padding-bottom:20px;margin-bottom:24px}
+  .logo{width:72px;height:72px;object-fit:contain;margin-bottom:8px}
+  .club{font-size:20px;font-weight:bold;color:#9B2335;margin:4px 0}
+  .subtitle{font-size:13px;color:#666}
+  .rid{font-size:11px;color:#999;margin-top:6px;font-family:monospace}
+  .row{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eee;font-size:14px}
+  .lbl{color:#666}.val{font-weight:600}
+  .total{text-align:center;margin:24px 0;font-size:22px;font-weight:bold;color:#C9973C}
+  .footer{text-align:center;font-size:12px;color:#888;margin-top:24px;line-height:1.6}
+  .btn{display:block;margin:20px auto;padding:10px 28px;background:#C9973C;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit}
+  @media print{.btn{display:none}}
+</style></head><body>
+<div class="hdr">
+  <img src="${logoUrl}" class="logo" onerror="this.style.display='none'" />
+  <div class="club">Spokane Spartans Cricket Club</div>
+  <div class="subtitle">Official Membership Receipt</div>
+  <div class="rid">Receipt #${receiptId}</div>
+</div>
+<div class="row"><span class="lbl">Member Name</span><span class="val">${t.memberName || "—"}</span></div>
+<div class="row"><span class="lbl">Date</span><span class="val">${dateStr}</span></div>
+<div class="row"><span class="lbl">Description</span><span class="val">Membership Fees – ${year} Season</span></div>
+<div class="row"><span class="lbl">Payment Method</span><span class="val">${t.paypal ? "PayPal" : "Cash / Other"}${t.note ? " · " + t.note : ""}</span></div>
+<div class="total">Amount Paid: $${t.amount.toFixed(2)}</div>
+<div class="footer">This receipt is issued by the Spokane Spartans Cricket Club.<br><br><strong>Issued:</strong> ${new Date().toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})}</div>
+<button class="btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+</body></html>`);
+  w.document.close();
 }
 
 const icons = {
@@ -198,18 +236,33 @@ export default function App() {
   }, [selectedYear]);
 
   // ── DB operations ────────────────────────────────────────────────────────
-  const addTx = async (form) => {
-    await supabase.from("transactions").insert({
+  const addTx = async (form, file) => {
+    const { data: rows } = await supabase.from("transactions").insert({
       year: selectedYear, type: form.type, date: form.date,
       category: form.category, amount: form.amount,
       note: form.note || "", paypal: form.paypal || false,
       member_name: form.memberName || "",
-    });
+    }).select();
+    if (file && rows?.[0]) {
+      const ext = file.name.split(".").pop();
+      const path = `${rows[0].id}.${ext}`;
+      await supabase.storage.from("receipts").upload(path, file);
+      const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
+      await supabase.from("transactions").update({ receipt_url: urlData.publicUrl }).eq("id", rows[0].id);
+    }
     setData(await fetchAllData(selectedYear));
   };
   const delTx = async (id) => {
     await supabase.from("transactions").delete().eq("id", id);
     setData(d => ({ ...d, transactions: d.transactions.filter(t => t.id !== id) }));
+  };
+  const uploadReceipt = async (id, file) => {
+    const ext = file.name.split(".").pop();
+    const path = `${id}.${ext}`;
+    await supabase.storage.from("receipts").upload(path, file, { upsert: true });
+    const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
+    await supabase.from("transactions").update({ receipt_url: urlData.publicUrl }).eq("id", id);
+    setData(d => ({ ...d, transactions: d.transactions.map(t => t.id === id ? { ...t, receiptUrl: urlData.publicUrl } : t) }));
   };
   const addCat = async (catType, name) => {
     await supabase.from("custom_categories").insert({ year: selectedYear, cat_type: catType, name });
@@ -317,7 +370,7 @@ export default function App() {
       {/* Content */}
       <div style={{ padding: "16px 16px 80px", maxWidth: 640, margin: "0 auto" }}>
         {tab === "Dashboard" && <Dashboard data={data} totalIn={totalIn} totalOut={totalOut} />}
-        {tab === "Finances"  && <Finances  data={data} isAdmin={isAdmin} allExpCats={allExpCats} allIncCats={allIncCats} onAddTx={addTx} onDelTx={delTx} onAddCat={addCat} />}
+        {tab === "Finances"  && <Finances  data={data} isAdmin={isAdmin} allExpCats={allExpCats} allIncCats={allIncCats} onAddTx={addTx} onDelTx={delTx} onAddCat={addCat} year={selectedYear} onUploadReceipt={uploadReceipt} />}
         {tab === "Members"   && <Members   data={data} isAdmin={isAdmin} onAddMember={addMember} onTogglePaid={togglePaid} onDelMember={delMember} onSaveAmt={saveAmt} />}
         {tab === "Events"    && <Events    data={data} isAdmin={isAdmin} onAddEvent={addEvent} onDelEvent={delEvent} />}
       </div>
@@ -341,11 +394,15 @@ export default function App() {
 
 // ─── DASHBOARD ───────────────────────────────────────────────────────────
 function Dashboard({ data, totalIn, totalOut }) {
-  const recent      = [...data.transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8);
+  const recent      = [...data.transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
   const paidMembers = data.members.filter(m => m.paid).length;
   const expByCategory = {};
   data.transactions.filter(t => t.type === "expense").forEach(t => {
     expByCategory[t.category] = (expByCategory[t.category] || 0) + t.amount;
+  });
+  const incByCategory = {};
+  data.transactions.filter(t => t.type === "income").forEach(t => {
+    incByCategory[t.category] = (incByCategory[t.category] || 0) + t.amount;
   });
 
   return (
@@ -362,6 +419,22 @@ function Dashboard({ data, totalIn, totalOut }) {
           </div>
         ))}
       </div>
+
+      {Object.keys(incByCategory).length > 0 && (
+        <Card title="Income Breakdown">
+          {Object.entries(incByCategory).sort((a, b) => b[1] - a[1]).map(([cat, amt]) => (
+            <div key={cat} style={{ marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+                <span style={{ color: C.text, fontWeight: "500" }}>{cat}</span>
+                <span style={{ color: C.green, fontWeight: "600" }}>{fmt(amt)}</span>
+              </div>
+              <div style={{ height: 5, background: "#F3F0EC", borderRadius: 3 }}>
+                <div style={{ height: 5, borderRadius: 3, background: C.green, width: `${Math.min(100, (amt / totalIn) * 100)}%`, transition: "width 0.4s" }} />
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
 
       {Object.keys(expByCategory).length > 0 && (
         <Card title="Expense Breakdown">
@@ -401,18 +474,19 @@ function Dashboard({ data, totalIn, totalOut }) {
 }
 
 // ─── FINANCES ────────────────────────────────────────────────────────────
-function Finances({ data, isAdmin, allExpCats, allIncCats, onAddTx, onDelTx, onAddCat }) {
+function Finances({ data, isAdmin, allExpCats, allIncCats, onAddTx, onDelTx, onAddCat, year, onUploadReceipt }) {
   const blank = { type: "expense", date: today(), category: allExpCats[0], amount: "", note: "", paypal: false, memberName: "" };
   const [form, setForm]       = useState(blank);
   const [showForm, setShowForm] = useState(false);
   const [newCat, setNewCat]   = useState("");
   const [catType, setCatType] = useState("expense");
   const [filter, setFilter]   = useState("all");
+  const [receiptFile, setReceiptFile] = useState(null);
 
   const addTx = async () => {
     if (!form.amount || isNaN(form.amount) || +form.amount <= 0) return;
-    await onAddTx({ ...form, amount: parseFloat(form.amount) });
-    setForm(blank); setShowForm(false);
+    await onAddTx({ ...form, amount: parseFloat(form.amount) }, receiptFile);
+    setForm(blank); setShowForm(false); setReceiptFile(null);
   };
   const delTx = async (id) => { await onDelTx(id); };
   const addCat = async () => {
@@ -448,21 +522,43 @@ function Finances({ data, isAdmin, allExpCats, allIncCats, onAddTx, onDelTx, onA
               ))}
             </div>
           </div>
-          {form.type === "income" && <FormRow label="Member Name"><input placeholder="Who paid?" value={form.memberName} onChange={e => setForm({ ...form, memberName: e.target.value })} style={inputStyle} /></FormRow>}
+          {form.type === "income" && (
+            <FormRow label="Member Name">
+              <select value={form.memberName} onChange={e => setForm({ ...form, memberName: e.target.value })} style={inputStyle}>
+                <option value="">— Select member —</option>
+                {data.members.map(m => <option key={m.id} value={m.name}>{m.name}</option>)}
+                <option value="__other__">Other…</option>
+              </select>
+              {form.memberName === "__other__" && (
+                <input placeholder="Enter name" onChange={e => setForm({ ...form, memberName: e.target.value })} style={{ ...inputStyle, marginTop: 6 }} />
+              )}
+            </FormRow>
+          )}
           <FormRow label="Date"><input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} style={inputStyle} /></FormRow>
           <FormRow label="Category">
-            <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} style={inputStyle}>
+            <select value={(form.type === "expense" ? allExpCats : allIncCats).includes(form.category) ? form.category : "__custom__"}
+              onChange={e => setForm({ ...form, category: e.target.value === "__custom__" ? "" : e.target.value })} style={inputStyle}>
               {(form.type === "expense" ? allExpCats : allIncCats).map(c => <option key={c}>{c}</option>)}
+              <option value="__custom__">Other (type custom)…</option>
             </select>
+            {!(form.type === "expense" ? allExpCats : allIncCats).includes(form.category) && (
+              <input placeholder="Custom category" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} style={{ ...inputStyle, marginTop: 6 }} />
+            )}
           </FormRow>
           <FormRow label="Amount ($)"><input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} style={inputStyle} /></FormRow>
           <FormRow label="Note"><input placeholder="Optional note" value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} style={inputStyle} /></FormRow>
           <FormRow label="PayPal?"><input type="checkbox" checked={form.paypal} onChange={e => setForm({ ...form, paypal: e.target.checked })} style={{ accentColor: C.gold, width: 18, height: 18 }} /></FormRow>
+          {form.type === "expense" && (
+            <FormRow label="Receipt (optional)">
+              <input type="file" accept="image/*,application/pdf" onChange={e => setReceiptFile(e.target.files[0] || null)} style={{ ...inputStyle, padding: "6px 10px", fontSize: 13 }} />
+            </FormRow>
+          )}
           <button onClick={addTx} style={saveBtnStyle}>Save Transaction</button>
         </FormCard>
       )}
 
       <Card title="Transactions">
+        {!isAdmin && <div style={{ fontSize: 12, color: C.muted, fontStyle: "italic", marginBottom: 10 }}>Need a membership receipt? Contact your admin.</div>}
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           {["all", "income", "expense"].map(f => (
             <button key={f} onClick={() => setFilter(f)} style={{ ...pillStyle, background: filter === f ? C.goldLight : "#F9FAFB", color: filter === f ? "#92672A" : C.sub, borderColor: filter === f ? C.goldBorder : C.border, fontWeight: filter === f ? "700" : "500" }}>
@@ -473,7 +569,22 @@ function Finances({ data, isAdmin, allExpCats, allIncCats, onAddTx, onDelTx, onA
         {filtered.length === 0 ? <EmptyState text="No transactions" /> : filtered.map(t => (
           <div key={t.id} style={{ display: "flex", alignItems: "center", borderBottom: `1px solid ${C.border}` }}>
             <div style={{ flex: 1 }}><TxRow t={t} /></div>
-            {isAdmin && <button onClick={() => delTx(t.id)} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, padding: "0 4px", lineHeight: 1 }} title="Delete">×</button>}
+            {t.type === "income" && t.category === "Membership Fees" && isAdmin && (
+              <button onClick={() => {
+                const membershipTxs = data.transactions.filter(x => x.type === "income" && x.category === "Membership Fees");
+                const num = membershipTxs.length - membershipTxs.findIndex(x => x.id === t.id);
+                generateReceipt(t, year, num);
+              }} style={{ background: "transparent", border: "none", color: C.gold, cursor: "pointer", fontSize: 18, padding: "0 4px" }} title="Download Receipt">🧾</button>
+            )}
+            {t.type === "expense" && t.receiptUrl && (
+              <a href={t.receiptUrl} target="_blank" rel="noreferrer" style={{ color: C.gold, fontSize: 18, padding: "0 4px", textDecoration: "none" }} title="View Receipt">📎</a>
+            )}
+            {t.type === "expense" && !t.receiptUrl && isAdmin && (
+              <label style={{ color: C.muted, fontSize: 18, padding: "0 4px", cursor: "pointer" }} title="Attach Receipt">
+                📎<input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={e => e.target.files[0] && onUploadReceipt(t.id, e.target.files[0])} />
+              </label>
+            )}
+            {isAdmin && <button onClick={() => { if (window.confirm(`Delete this ${t.type} of ${fmt(t.amount)}?`)) delTx(t.id); }} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, padding: "0 4px", lineHeight: 1 }} title="Delete">×</button>}
           </div>
         ))}
       </Card>
