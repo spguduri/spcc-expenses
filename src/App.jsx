@@ -923,7 +923,7 @@ function Forecast({ data, isAdmin }) {
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 {[
                   { label: "Projected expense", color: C.red },
-                  { label: "Actual expense", color: "#FECACA" },
+                  { label: "Actual expense", color: C.green },
                 ].map(item => (
                   <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
                     <span style={{ width: 14, height: 10, borderRadius: 999, display: "inline-block", background: item.color }} />
@@ -938,10 +938,7 @@ function Forecast({ data, isAdmin }) {
 
                 return (
                   <div key={month.label} style={{ display: "grid", gridTemplateColumns: "70px 1fr 120px", gap: 12, alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <div style={{ fontSize: 12, color: C.text, fontWeight: 700 }}>{month.label}</div>
-                      {month.label === "Apr" && <div style={{ fontSize: 10, color: C.muted }}>Includes club + league setup fees</div>}
-                    </div>
+                    <div style={{ fontSize: 12, color: C.text, fontWeight: 700 }}>{month.label}</div>
                     <div style={{ display: "grid", gap: 8 }}>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <div style={{ width: 80, fontSize: 10, color: C.red }}>Proj exp</div>
@@ -951,11 +948,11 @@ function Forecast({ data, isAdmin }) {
                         <div style={{ width: 52, fontSize: 11, color: C.red, textAlign: "right" }}>{fmt(month.projectedExpense)}</div>
                       </div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        <div style={{ width: 80, fontSize: 10, color: "#B91C1C" }}>Actual exp</div>
-                        <div style={{ flex: 1, height: 10, borderRadius: 999, background: "#FEE2E2", overflow: "hidden" }}>
-                          <div style={{ width: `${actualExpensePct}%`, height: "100%", background: "#F87171" }} />
+                        <div style={{ width: 80, fontSize: 10, color: C.green }}>Actual exp</div>
+                        <div style={{ flex: 1, height: 10, borderRadius: 999, background: "#DCFCE7", overflow: "hidden" }}>
+                          <div style={{ width: `${actualExpensePct}%`, height: "100%", background: C.green }} />
                         </div>
-                        <div style={{ width: 52, fontSize: 11, color: "#B91C1C", textAlign: "right" }}>{fmt(month.actualExpense)}</div>
+                        <div style={{ width: 52, fontSize: 11, color: C.green, textAlign: "right" }}>{fmt(month.actualExpense)}</div>
                       </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, color: C.muted, textAlign: "right" }}>
