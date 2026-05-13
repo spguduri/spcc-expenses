@@ -899,7 +899,7 @@ function Forecast({ data, isAdmin }) {
             { label: "Current balance", value: fmt(balance), color: balance >= 0 ? C.green : C.red },
             { label: "Projected season membership income", value: fmt(projectedIncome), color: C.green },
             { label: "Carryover available", value: fmt(carryoverIncome), color: C.gold },
-            { label: "Total season income", value: fmt(totalSeasonIncome), color: C.green },
+            { label: "Projected season income", value: fmt(totalSeasonIncome), color: C.green },
             { label: "Projected season expenses", value: fmt(totalExpenses), color: C.red },
             { label: "Projected ending balance", value: fmt(seasonNet), color: seasonNet >= 0 ? C.green : C.red },
             { label: "Away games", value: awayGames, color: C.gold },
