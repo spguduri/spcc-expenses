@@ -784,10 +784,11 @@ function Forecast({ data, isAdmin }) {
   };
 
   const gameCounts = distributeGames(monthsInSeason, totalGames);
+  const gameCostPerGame = totalGames > 0 ? ((Number(umpireFee) + (Number(homeFood) * (homeGames / totalGames)) + (Number(awayGas) * (awayGames / totalGames))) ) : 0;
   const monthlyForecast = monthsInSeason.map((label, index) => {
     const gameCount = gameCounts[index] ?? 0;
-    const income = incomeProjected / monthsInSeason.length;
-    const expense = totalExpenses / monthsInSeason.length;
+    const income = index === 0 ? incomeProjected : 0;
+    const expense = Number(groundFee) + (gameCount * gameCostPerGame);
     return { label, gameCount, income, expense, net: income - expense };
   });
 
@@ -827,7 +828,7 @@ function Forecast({ data, isAdmin }) {
               </div>
             </div>
             <div style={{ marginTop: 12, fontSize: 12, color: C.muted }}>
-              Season is spread over {monthsInSeason.length} month(s): {monthsInSeason.join(" → ")}. Away games are calculated as total games minus home games.
+              Season is spread over {monthsInSeason.length} month(s)
             </div>
           </Card>
 
@@ -892,27 +893,33 @@ function Forecast({ data, isAdmin }) {
       </Card>
 
       <Card title="Season Breakdown">
-        {monthlyForecast.map(month => {
-          const total = Math.max(1, Math.abs(month.income) + Math.abs(month.expense));
-          const incomePct = (month.income / total) * 100;
-          const expensePct = (month.expense / total) * 100;
-          return (
-            <div key={month.label} style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 10, alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+        {(() => {
+          const maxValue = Math.max(1, ...monthlyForecast.map(m => Math.max(m.income, m.expense)));
+          return monthlyForecast.map(month => (
+            <div key={month.label} style={{ display: "grid", gridTemplateColumns: "80px 1fr 120px", gap: 10, alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
               <div style={{ fontSize: 12, color: C.sub }}>{month.label}</div>
-              <div>
-                <div style={{ display: "flex", gap: 4, height: 8, borderRadius: 999, overflow: "hidden", background: "#F3F4F6" }}>
-                  <div style={{ width: `${Math.min(100, Math.max(0, incomePct))}%`, background: C.green }} />
-                  <div style={{ width: `${Math.min(100, Math.max(0, expensePct))}%`, background: C.red }} />
+              <div style={{ display: "grid", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ minWidth: 36, fontSize: 11, color: C.green, fontWeight: 700 }}>Income</div>
+                  <div style={{ flex: 1, height: 14, borderRadius: 999, background: "#F3F4F6", overflow: "hidden" }}>
+                    <div style={{ width: `${(month.income / maxValue) * 100}%`, height: "100%", background: C.green }} />
+                  </div>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, color: C.muted }}>
-                  <span>+{fmt(month.income)}</span>
-                  <span>-{fmt(month.expense)}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ minWidth: 36, fontSize: 11, color: C.red, fontWeight: 700 }}>Expense</div>
+                  <div style={{ flex: 1, height: 14, borderRadius: 999, background: "#F3F4F6", overflow: "hidden" }}>
+                    <div style={{ width: `${(month.expense / maxValue) * 100}%`, height: "100%", background: C.red }} />
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: C.text, marginTop: 4 }}>Games: {month.gameCount}</div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: C.muted, textAlign: "right" }}>
+                <span style={{ color: C.green, fontWeight: 700 }}>+{fmt(month.income)}</span>
+                <span style={{ color: C.red, fontWeight: 700 }}>-{fmt(month.expense)}</span>
+                <span style={{ fontSize: 11, color: C.text }}>Games: {month.gameCount}</span>
               </div>
             </div>
-          );
-        })}
+          ));
+        })()}
       </Card>
     </div>
   );
