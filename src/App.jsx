@@ -784,13 +784,39 @@ function Forecast({ data, isAdmin }) {
   };
 
   const gameCounts = distributeGames(monthsInSeason, totalGames);
-  const gameCostPerGame = totalGames > 0 ? ((Number(umpireFee) + (Number(homeFood) * (homeGames / totalGames)) + (Number(awayGas) * (awayGames / totalGames))) ) : 0;
+  const gameCostPerGame = totalGames > 0 ? (Number(umpireFee) + (Number(homeFood) * (homeGames / totalGames)) + (Number(awayGas) * (awayGames / totalGames))) : 0;
+
+  const monthNumber = { Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08" };
+  const actualSeries = monthsInSeason.map(label => {
+    const monthKey = monthNumber[label] || "00";
+    const income = data.transactions.filter(t => t.type === "income" && t.date.slice(5, 7) === monthKey).reduce((sum, t) => sum + t.amount, 0);
+    const expense = data.transactions.filter(t => t.type === "expense" && t.date.slice(5, 7) === monthKey).reduce((sum, t) => sum + t.amount, 0);
+    return { label, actualIncome: income, actualExpense: expense };
+  });
+
   const monthlyForecast = monthsInSeason.map((label, index) => {
     const gameCount = gameCounts[index] ?? 0;
     const income = index === 0 ? incomeProjected : 0;
     const expense = Number(groundFee) + (gameCount * gameCostPerGame);
-    return { label, gameCount, income, expense, net: income - expense };
+    return {
+      label,
+      gameCount,
+      projectedIncome: income,
+      projectedExpense: expense,
+      actualIncome: actualSeries[index].actualIncome,
+      actualExpense: actualSeries[index].actualExpense,
+    };
   });
+
+  const makeLine = (values, maxValue, width, height, left, right, top, bottom) => {
+    const plotWidth = width - left - right;
+    const plotHeight = height - top - bottom;
+    return values.map((value, idx) => {
+      const x = left + (idx / Math.max(1, values.length - 1)) * plotWidth;
+      const y = height - bottom - (Math.min(value, maxValue) / maxValue) * plotHeight;
+      return `${idx === 0 ? "M" : "L"} ${x} ${y}`;
+    }).join(" ");
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -894,31 +920,60 @@ function Forecast({ data, isAdmin }) {
 
       <Card title="Season Breakdown">
         {(() => {
-          const maxValue = Math.max(1, ...monthlyForecast.map(m => Math.max(m.income, m.expense)));
-          return monthlyForecast.map(month => (
-            <div key={month.label} style={{ display: "grid", gridTemplateColumns: "80px 1fr 120px", gap: 10, alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 12, color: C.sub }}>{month.label}</div>
-              <div style={{ display: "grid", gap: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ minWidth: 36, fontSize: 11, color: C.green, fontWeight: 700 }}>Income</div>
-                  <div style={{ flex: 1, height: 14, borderRadius: 999, background: "#F3F4F6", overflow: "hidden" }}>
-                    <div style={{ width: `${(month.income / maxValue) * 100}%`, height: "100%", background: C.green }} />
-                  </div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ minWidth: 36, fontSize: 11, color: C.red, fontWeight: 700 }}>Expense</div>
-                  <div style={{ flex: 1, height: 14, borderRadius: 999, background: "#F3F4F6", overflow: "hidden" }}>
-                    <div style={{ width: `${(month.expense / maxValue) * 100}%`, height: "100%", background: C.red }} />
-                  </div>
+          const width = 560;
+          const height = 260;
+          const left = 40;
+          const right = 20;
+          const top = 20;
+          const bottom = 40;
+          const actualIncome = monthlyForecast.map(m => m.actualIncome);
+          const actualExpense = monthlyForecast.map(m => m.actualExpense);
+          const projectedIncome = monthlyForecast.map(m => m.projectedIncome);
+          const projectedExpense = monthlyForecast.map(m => m.projectedExpense);
+          const maxValue = Math.max(1, ...[...actualIncome, ...actualExpense, ...projectedIncome, ...projectedExpense]);
+          const months = monthlyForecast.map(m => m.label);
+
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                  {[
+                    { label: "Projected income", color: C.green },
+                    { label: "Projected expense", color: C.red },
+                    { label: "Actual income", color: C.green, dash: "4 2" },
+                    { label: "Actual expense", color: C.red, dash: "4 2" },
+                  ].map(item => (
+                    <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
+                      <span style={{ width: 14, height: 10, borderRadius: 999, display: "inline-block", background: item.color, border: item.dash ? `1px dashed ${item.color}` : "none", boxSizing: "border-box" }} />
+                      {item.label}
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: C.muted, textAlign: "right" }}>
-                <span style={{ color: C.green, fontWeight: 700 }}>+{fmt(month.income)}</span>
-                <span style={{ color: C.red, fontWeight: 700 }}>-{fmt(month.expense)}</span>
-                <span style={{ fontSize: 11, color: C.text }}>Games: {month.gameCount}</span>
-              </div>
+              <svg viewBox={`0 0 ${width} ${height}`} style={{ width: "100%", height: 260 }}>
+                {[0.25, 0.5, 0.75, 1].map(f => (
+                  <line key={f} x1={left} y1={top + (height - top - bottom) * f} x2={width - right} y2={top + (height - top - bottom) * f} stroke="#E5E7EB" strokeWidth="1" />
+                ))}
+                <line x1={left} y1={top} x2={left} y2={height - bottom} stroke="#CBD5E1" strokeWidth="1" />
+                <line x1={left} y1={height - bottom} x2={width - right} y2={height - bottom} stroke="#CBD5E1" strokeWidth="1" />
+                <text x={left - 8} y={top + 4} textAnchor="end" fontSize="10" fill={C.muted}>${Math.ceil(maxValue)}</text>
+                <text x={left - 8} y={height - bottom} textAnchor="end" fontSize="10" fill={C.muted}>$0</text>
+                <path d={makeLine(projectedIncome, maxValue, width, height, left, right, top, bottom)} stroke={C.green} strokeWidth="3" fill="none" strokeLinecap="round" />
+                <path d={makeLine(projectedExpense, maxValue, width, height, left, right, top, bottom)} stroke={C.red} strokeWidth="3" fill="none" strokeLinecap="round" />
+                <path d={makeLine(actualIncome, maxValue, width, height, left, right, top, bottom)} stroke={C.green} strokeWidth="2" fill="none" strokeLinecap="round" strokeDasharray="6 4" />
+                <path d={makeLine(actualExpense, maxValue, width, height, left, right, top, bottom)} stroke={C.red} strokeWidth="2" fill="none" strokeLinecap="round" strokeDasharray="6 4" />
+                {monthlyForecast.map((month, idx) => {
+                  const x = left + (idx / Math.max(1, months.length - 1)) * (width - left - right);
+                  return (
+                    <g key={month.label}>
+                      <line x1={x} y1={height - bottom} x2={x} y2={height - bottom + 6} stroke={C.muted} strokeWidth="1" />
+                      <text x={x} y={height - bottom + 18} textAnchor="middle" fontSize="10" fill={C.muted}>{month.label}</text>
+                    </g>
+                  );
+                })}
+              </svg>
             </div>
-          ));
+          );
         })()}
       </Card>
     </div>
