@@ -759,10 +759,33 @@ function Forecast({ data, isAdmin }) {
   const seasonNet = incomeProjected - totalExpenses;
   const balance = data.transactions.reduce((sum, t) => sum + (t.type === "income" ? t.amount : -t.amount), 0);
 
-  const gamesPerMonthBase = Math.floor(totalGames / monthsInSeason.length);
-  const extraGames = totalGames % monthsInSeason.length;
+  const distributeGames = (months, games) => {
+    const allocation = months.map(() => 0);
+    const aprIndex = months.indexOf("Apr");
+    const augIndex = months.indexOf("Aug");
+
+    if (aprIndex !== -1 && augIndex !== -1 && aprIndex < augIndex && months.length >= 3) {
+      let remaining = games;
+      if (remaining > 0) { allocation[aprIndex] = 1; remaining--; }
+      if (remaining > 0) { allocation[augIndex] = 1; remaining--; }
+      const middleIndexes = months.map((_, idx) => idx).filter(idx => idx !== aprIndex && idx !== augIndex);
+      const base = middleIndexes.length > 0 ? Math.floor(remaining / middleIndexes.length) : 0;
+      let extra = remaining % (middleIndexes.length || 1);
+      middleIndexes.forEach(idx => {
+        allocation[idx] = base + (extra > 0 ? 1 : 0);
+        if (extra > 0) extra--; 
+      });
+      return allocation;
+    }
+
+    const base = Math.floor(games / months.length);
+    let extra = games % months.length;
+    return months.map((_, idx) => base + (idx < extra ? 1 : 0));
+  };
+
+  const gameCounts = distributeGames(monthsInSeason, totalGames);
   const monthlyForecast = monthsInSeason.map((label, index) => {
-    const gameCount = gamesPerMonthBase + (index < extraGames ? 1 : 0);
+    const gameCount = gameCounts[index] ?? 0;
     const income = incomeProjected / monthsInSeason.length;
     const expense = totalExpenses / monthsInSeason.length;
     return { label, gameCount, income, expense, net: income - expense };
@@ -847,7 +870,7 @@ function Forecast({ data, isAdmin }) {
         </>
       ) : (
         <Card title="Forecast settings">
-          <div style={{ fontSize: 13, color: C.muted }}>Forecast assumptions are editable only by admins. Sign in as admin to change the season model.</div>
+          <div style={{ fontSize: 13, color: C.muted }}>Sign in as admin to change the season model.</div>
         </Card>
       )}
 
