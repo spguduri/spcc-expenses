@@ -705,110 +705,164 @@ function Members({ data, isAdmin, onAddMember, onTogglePaid, onDelMember, onSave
 }
 
 // ─── FORECAST ───────────────────────────────────────────────────────────
-function Forecast({ data, year }) {
-  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const monthly = MONTHS.map((label, index) => {
-    const monthKey = `${year}-${String(index + 1).padStart(2, "0")}`;
-    const txs = data.transactions.filter(t => t.date.startsWith(monthKey));
-    const income = txs.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
-    const expense = txs.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
-    return { label, income, expense, net: income - expense };
-  });
+function Forecast({ data }) {
+  const [membershipEstimate, setMembershipEstimate] = useState(4700);
+  const [carryover, setCarryover] = useState(0);
+  const [totalGames, setTotalGames] = useState(11);
+  const [homeGames, setHomeGames] = useState(5);
+  const [startMonth, setStartMonth] = useState("Apr");
+  const [endMonth, setEndMonth] = useState("Aug");
+  const [umpireFee, setUmpireFee] = useState(40);
+  const [homeFood, setHomeFood] = useState(130);
+  const [awayGas, setAwayGas] = useState(300);
+  const [groundFee, setGroundFee] = useState(300);
+  const [clubFees, setClubFees] = useState(500);
+  const [leagueFees, setLeagueFees] = useState(900);
+  const [equipmentCost, setEquipmentCost] = useState(400);
+  const [paintCost, setPaintCost] = useState(150);
 
-  const totalIncome = monthly.reduce((sum, m) => sum + m.income, 0);
-  const totalExpense = monthly.reduce((sum, m) => sum + m.expense, 0);
-  const averageIncome = totalIncome / 12;
-  const averageExpense = totalExpense / 12;
-  const averageNet = averageIncome - averageExpense;
+  const seasonMonths = ["Apr", "May", "Jun", "Jul", "Aug"];
+  const startIndex = seasonMonths.indexOf(startMonth);
+  const endIndex = seasonMonths.indexOf(endMonth);
+  const monthsInSeason = endIndex >= startIndex ? seasonMonths.slice(startIndex, endIndex + 1) : seasonMonths.slice(startIndex).concat(seasonMonths.slice(0, endIndex + 1));
+
+  const awayGames = Math.max(0, totalGames - homeGames);
+  const membershipIncome = Number(membershipEstimate);
+  const carryoverIncome = Number(carryover);
+  const incomeProjected = membershipIncome + carryoverIncome;
+
+  const oneTimeExpenses = Number(clubFees) + Number(leagueFees) + Number(equipmentCost) + Number(paintCost);
+  const gameExpenses = (Number(umpireFee) * totalGames) + (Number(homeFood) * homeGames) + (Number(awayGas) * awayGames);
+  const groundExpenses = Number(groundFee) * monthsInSeason.length;
+  const totalExpenses = oneTimeExpenses + gameExpenses + groundExpenses;
+  const seasonNet = incomeProjected - totalExpenses;
   const balance = data.transactions.reduce((sum, t) => sum + (t.type === "income" ? t.amount : -t.amount), 0);
-  const currentYear = new Date().getFullYear();
-  const currentMonthIndex = currentYear === year ? new Date().getMonth() : 11;
-  const remainingMonths = Math.max(0, 11 - currentMonthIndex);
-  const projectedBalance = balance + averageNet * remainingMonths;
+  const projectedBalance = balance + seasonNet;
 
-  const categorySums = data.transactions.reduce((acc, t) => {
-    const target = t.type === "income" ? "income" : "expense";
-    acc[target][t.category] = (acc[target][t.category] || 0) + t.amount;
-    return acc;
-  }, { income: {}, expense: {} });
-
-  const topCategories = (type) => Object.entries(categorySums[type])
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3);
+  const gamesPerMonthBase = Math.floor(totalGames / monthsInSeason.length);
+  const extraGames = totalGames % monthsInSeason.length;
+  const monthlyForecast = monthsInSeason.map((label, index) => {
+    const gameCount = gamesPerMonthBase + (index < extraGames ? 1 : 0);
+    const income = incomeProjected / monthsInSeason.length;
+    const expense = totalExpenses / monthsInSeason.length;
+    return { label, gameCount, income, expense, net: income - expense };
+  });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <Card title="Yearly Budget Forecast">
+      <Card title="Forecast Settings">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <FieldLabel>Membership fees forecast</FieldLabel>
+            <input type="number" value={membershipEstimate} onChange={e => setMembershipEstimate(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <FieldLabel>Carryover from last year</FieldLabel>
+            <input type="number" value={carryover} onChange={e => setCarryover(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <FieldLabel>Total games</FieldLabel>
+            <input type="number" min="0" value={totalGames} onChange={e => setTotalGames(Math.max(0, Number(e.target.value)))} style={inputStyle} />
+          </div>
+          <div>
+            <FieldLabel>Home games</FieldLabel>
+            <input type="number" min="0" max={totalGames} value={homeGames} onChange={e => setHomeGames(Math.min(totalGames, Math.max(0, Number(e.target.value))))} style={inputStyle} />
+          </div>
+          <div>
+            <FieldLabel>Season start</FieldLabel>
+            <select value={startMonth} onChange={e => setStartMonth(e.target.value)} style={inputStyle}>
+              {seasonMonths.map(m => <option key={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <FieldLabel>Season end</FieldLabel>
+            <select value={endMonth} onChange={e => setEndMonth(e.target.value)} style={inputStyle}>
+              {seasonMonths.map(m => <option key={m}>{m}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{ marginTop: 12, fontSize: 12, color: C.muted }}>
+          Season is spread over {monthsInSeason.length} month(s): {monthsInSeason.join(" → ")}. Away games are calculated as total games minus home games.
+        </div>
+      </Card>
+
+      <Card title="Expense Assumptions">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <FieldLabel>Club fees (one-time)</FieldLabel>
+            <input type="number" value={clubFees} onChange={e => setClubFees(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <FieldLabel>League fees (one-time)</FieldLabel>
+            <input type="number" value={leagueFees} onChange={e => setLeagueFees(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <FieldLabel>Equipment / balls</FieldLabel>
+            <input type="number" value={equipmentCost} onChange={e => setEquipmentCost(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <FieldLabel>Paint / ground prep</FieldLabel>
+            <input type="number" value={paintCost} onChange={e => setPaintCost(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <FieldLabel>Umpiring fees per game</FieldLabel>
+            <input type="number" value={umpireFee} onChange={e => setUmpireFee(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <FieldLabel>Home game food</FieldLabel>
+            <input type="number" value={homeFood} onChange={e => setHomeFood(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <FieldLabel>Away game gas</FieldLabel>
+            <input type="number" value={awayGas} onChange={e => setAwayGas(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <FieldLabel>Ground fee monthly</FieldLabel>
+            <input type="number" value={groundFee} onChange={e => setGroundFee(e.target.value)} style={inputStyle} />
+          </div>
+        </div>
+      </Card>
+
+      <Card title="Season Forecast Overview">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
-            { label: "Current Balance", value: fmt(balance), color: balance >= 0 ? C.green : C.red },
-            { label: "Projected year-end", value: fmt(projectedBalance), color: projectedBalance >= 0 ? C.green : C.red },
+            { label: "Current balance", value: fmt(balance), color: balance >= 0 ? C.green : C.red },
+            { label: "Projected season income", value: fmt(incomeProjected), color: C.green },
+            { label: "Projected season expenses", value: fmt(totalExpenses), color: C.red },
+            { label: "Projected season net", value: fmt(seasonNet), color: seasonNet >= 0 ? C.green : C.red },
+            { label: "Projected end balance", value: fmt(projectedBalance), color: projectedBalance >= 0 ? C.green : C.red },
+            { label: "Away games", value: awayGames, color: C.gold },
           ].map(item => (
-            <div key={item.label} style={{ background: item.color === C.green ? C.greenLight : C.redLight, border: `1px solid ${item.color === C.green ? C.greenBorder : C.redBorder}`, borderRadius: 14, padding: 14 }}>
-              <div style={{ fontSize: 11, color: C.sub, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6, fontWeight: 700 }}>{item.label}</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: item.color }}>{item.value}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
-          {[
-            { label: "Avg. monthly income", value: fmt(averageIncome), color: C.green },
-            { label: "Avg. monthly expense", value: fmt(averageExpense), color: C.red },
-            { label: "Avg. monthly net", value: fmt(averageNet), color: averageNet >= 0 ? C.green : C.red },
-            { label: "Remaining months", value: remainingMonths === 0 ? "None" : `${remainingMonths}` , color: C.gold },
-          ].map(item => (
-            <div key={item.label} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: 14 }}>
+            <div key={item.label} style={{ background: item.color === C.green ? C.greenLight : item.color === C.red ? C.redLight : "#fff", border: `1px solid ${item.color === C.green ? C.greenBorder : item.color === C.red ? C.redBorder : C.border}`, borderRadius: 14, padding: 14 }}>
               <div style={{ fontSize: 10, color: C.sub, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6, fontWeight: 700 }}>{item.label}</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: item.color }}>{item.value}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: item.color }}>{item.value}</div>
             </div>
           ))}
         </div>
       </Card>
 
-      <Card title="Monthly Trend">
-        {monthly.map(m => {
-          const total = Math.max(1, Math.abs(m.income) + Math.abs(m.expense));
-          const incomePct = (m.income / total) * 100;
-          const expensePct = (m.expense / total) * 100;
+      <Card title="Season Breakdown">
+        {monthlyForecast.map(month => {
+          const total = Math.max(1, Math.abs(month.income) + Math.abs(month.expense));
+          const incomePct = (month.income / total) * 100;
+          const expensePct = (month.expense / total) * 100;
           return (
-            <div key={m.label} style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 10, alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ fontSize: 12, color: C.sub }}>{m.label}</div>
+            <div key={month.label} style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 10, alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 12, color: C.sub }}>{month.label}</div>
               <div>
                 <div style={{ display: "flex", gap: 4, height: 8, borderRadius: 999, overflow: "hidden", background: "#F3F4F6" }}>
-                  <div style={{ width: `${Math.min(100, Math.max(0, incomePct))}%`, background: C.green, transition: "width 0.2s" }} />
-                  <div style={{ width: `${Math.min(100, Math.max(0, expensePct))}%`, background: C.red, transition: "width 0.2s" }} />
+                  <div style={{ width: `${Math.min(100, Math.max(0, incomePct))}%`, background: C.green }} />
+                  <div style={{ width: `${Math.min(100, Math.max(0, expensePct))}%`, background: C.red }} />
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, color: C.muted }}>
-                  <span>+{fmt(m.income)}</span>
-                  <span>-{fmt(m.expense)}</span>
+                  <span>+{fmt(month.income)}</span>
+                  <span>-{fmt(month.expense)}</span>
                 </div>
+                <div style={{ fontSize: 11, color: C.text, marginTop: 4 }}>Games: {month.gameCount}</div>
               </div>
             </div>
           );
         })}
-      </Card>
-
-      <Card title="Top Categories">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div>
-            <div style={{ fontSize: 12, color: C.sub, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700 }}>Top Income</div>
-            {topCategories("income").length === 0 ? <EmptyState text="No income categories" /> : topCategories("income").map(([cat, amt]) => (
-              <div key={cat} style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-                <span style={{ color: C.text }}>{cat}</span>
-                <span style={{ color: C.green, fontWeight: 700 }}>{fmt(amt)}</span>
-              </div>
-            ))}
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: C.sub, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700 }}>Top Expenses</div>
-            {topCategories("expense").length === 0 ? <EmptyState text="No expense categories" /> : topCategories("expense").map(([cat, amt]) => (
-              <div key={cat} style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-                <span style={{ color: C.text }}>{cat}</span>
-                <span style={{ color: C.red, fontWeight: 700 }}>{fmt(amt)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </Card>
     </div>
   );
