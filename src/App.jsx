@@ -67,7 +67,7 @@ async function fetchAllData(year) {
 const fmt   = (n) => `$${Math.abs(n).toFixed(2)}`;
 const today = () => new Date().toISOString().split("T")[0];
 
-const TABS = ["Dashboard", "Finances", "Members", "Events"];
+const TABS = ["Dashboard", "Finances", "Members", "Forecast"];
 
 const AVATAR_COLORS = ["#C9973C","#9B2335","#2563EB","#059669","#7C3AED","#0891B2","#D97706","#65A30D","#DB2777","#0E7490"];
 
@@ -134,7 +134,7 @@ const icons = {
   Dashboard: <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
   Finances:  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
   Members:   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-  Events:    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  Forecast:  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="3 12 9 6 13 10 21 2"/><line x1="3" y1="21" x2="21" y2="21"/></svg>,
 };
 
 // ─── PIN GATE (full-screen, blocks all access until authenticated) ─────────
@@ -289,18 +289,6 @@ export default function App() {
     await supabase.from("members").update({ dues_amount: val }).eq("id", id);
     setData(d => ({ ...d, members: d.members.map(m => m.id === id ? { ...m, duesAmount: val } : m) }));
   };
-  const addEvent = async (form) => {
-    await supabase.from("events").insert({
-      year: selectedYear, name: form.name, type: form.type,
-      date: form.date, location: form.location || "",
-      notes: form.notes || "", cost: form.cost || 0,
-    });
-    setData(await fetchAllData(selectedYear));
-  };
-  const delEvent = async (id) => {
-    await supabase.from("events").delete().eq("id", id);
-    setData(d => ({ ...d, events: d.events.filter(e => e.id !== id) }));
-  };
 
   if (authLevel === null) return (
     <PinGate onAuth={(level) => { sessionStorage.setItem(AUTH_SESSION_KEY, level); setAuthLevel(level); }} />
@@ -372,7 +360,7 @@ export default function App() {
         {tab === "Dashboard" && <Dashboard data={data} totalIn={totalIn} totalOut={totalOut} />}
         {tab === "Finances"  && <Finances  data={data} isAdmin={isAdmin} allExpCats={allExpCats} allIncCats={allIncCats} onAddTx={addTx} onDelTx={delTx} onAddCat={addCat} year={selectedYear} onUploadReceipt={uploadReceipt} />}
         {tab === "Members"   && <Members   data={data} isAdmin={isAdmin} onAddMember={addMember} onTogglePaid={togglePaid} onDelMember={delMember} onSaveAmt={saveAmt} />}
-        {tab === "Events"    && <Events    data={data} isAdmin={isAdmin} onAddEvent={addEvent} onDelEvent={delEvent} />}
+        {tab === "Forecast"  && <Forecast  data={data} year={selectedYear} />}
       </div>
 
       {/* Sign Out — fixed bottom left */}
@@ -716,65 +704,111 @@ function Members({ data, isAdmin, onAddMember, onTogglePaid, onDelMember, onSave
   );
 }
 
-// ─── EVENTS ──────────────────────────────────────────────────────────────
-function Events({ data, isAdmin, onAddEvent, onDelEvent }) {
-  const [form, setForm]         = useState({ name: "", type: "Game", date: today(), location: "", notes: "", cost: "" });
-  const [showForm, setShowForm] = useState(false);
-  const EVENT_TYPES = ["Game", "Practice", "Tournament", "Meeting", "Fundraiser", "Other"];
+// ─── FORECAST ───────────────────────────────────────────────────────────
+function Forecast({ data, year }) {
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthly = MONTHS.map((label, index) => {
+    const monthKey = `${year}-${String(index + 1).padStart(2, "0")}`;
+    const txs = data.transactions.filter(t => t.date.startsWith(monthKey));
+    const income = txs.filter(t => t.type === "income").reduce((sum, t) => sum + t.amount, 0);
+    const expense = txs.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
+    return { label, income, expense, net: income - expense };
+  });
 
-  const addEvent = async () => {
-    if (!form.name.trim()) return;
-    await onAddEvent({ ...form, cost: form.cost ? parseFloat(form.cost) : 0 });
-    setForm({ name: "", type: "Game", date: today(), location: "", notes: "", cost: "" }); setShowForm(false);
-  };
-  const delEvent = async (id) => { await onDelEvent(id); };
-  const sorted = [...data.events].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const totalIncome = monthly.reduce((sum, m) => sum + m.income, 0);
+  const totalExpense = monthly.reduce((sum, m) => sum + m.expense, 0);
+  const averageIncome = totalIncome / 12;
+  const averageExpense = totalExpense / 12;
+  const averageNet = averageIncome - averageExpense;
+  const balance = data.transactions.reduce((sum, t) => sum + (t.type === "income" ? t.amount : -t.amount), 0);
+  const currentYear = new Date().getFullYear();
+  const currentMonthIndex = currentYear === year ? new Date().getMonth() : 11;
+  const remainingMonths = Math.max(0, 11 - currentMonthIndex);
+  const projectedBalance = balance + averageNet * remainingMonths;
+
+  const categorySums = data.transactions.reduce((acc, t) => {
+    const target = t.type === "income" ? "income" : "expense";
+    acc[target][t.category] = (acc[target][t.category] || 0) + t.amount;
+    return acc;
+  }, { income: {}, expense: {} });
+
+  const topCategories = (type) => Object.entries(categorySums[type])
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {isAdmin && (
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <ActionBtn onClick={() => setShowForm(!showForm)} label={showForm ? "Cancel" : "+ Add Event"} />
+      <Card title="Yearly Budget Forecast">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[
+            { label: "Current Balance", value: fmt(balance), color: balance >= 0 ? C.green : C.red },
+            { label: "Projected year-end", value: fmt(projectedBalance), color: projectedBalance >= 0 ? C.green : C.red },
+          ].map(item => (
+            <div key={item.label} style={{ background: item.color === C.green ? C.greenLight : C.redLight, border: `1px solid ${item.color === C.green ? C.greenBorder : C.redBorder}`, borderRadius: 14, padding: 14 }}>
+              <div style={{ fontSize: 11, color: C.sub, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6, fontWeight: 700 }}>{item.label}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: item.color }}>{item.value}</div>
+            </div>
+          ))}
         </div>
-      )}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
+          {[
+            { label: "Avg. monthly income", value: fmt(averageIncome), color: C.green },
+            { label: "Avg. monthly expense", value: fmt(averageExpense), color: C.red },
+            { label: "Avg. monthly net", value: fmt(averageNet), color: averageNet >= 0 ? C.green : C.red },
+            { label: "Remaining months", value: remainingMonths === 0 ? "None" : `${remainingMonths}` , color: C.gold },
+          ].map(item => (
+            <div key={item.label} style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: 14 }}>
+              <div style={{ fontSize: 10, color: C.sub, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6, fontWeight: 700 }}>{item.label}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: item.color }}>{item.value}</div>
+            </div>
+          ))}
+        </div>
+      </Card>
 
-      {isAdmin && showForm && (
-        <FormCard>
-          <FormRow label="Name *"><input placeholder="Event name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inputStyle} /></FormRow>
-          <FormRow label="Type">
-            <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} style={inputStyle}>
-              {EVENT_TYPES.map(t => <option key={t}>{t}</option>)}
-            </select>
-          </FormRow>
-          <FormRow label="Date"><input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} style={inputStyle} /></FormRow>
-          <FormRow label="Location"><input placeholder="Venue / location" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} style={inputStyle} /></FormRow>
-          <FormRow label="Est. Cost ($)"><input type="number" placeholder="0.00" value={form.cost} onChange={e => setForm({ ...form, cost: e.target.value })} style={inputStyle} /></FormRow>
-          <FormRow label="Notes"><input placeholder="Any notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} style={inputStyle} /></FormRow>
-          <button onClick={addEvent} style={saveBtnStyle}>Save Event</button>
-        </FormCard>
-      )}
-
-      <Card title={`Events (${data.events.length})`}>
-        {sorted.length === 0 ? <EmptyState text="No events added yet" /> : sorted.map(e => {
-          const isPast = new Date(e.date) < new Date(today());
+      <Card title="Monthly Trend">
+        {monthly.map(m => {
+          const total = Math.max(1, Math.abs(m.income) + Math.abs(m.expense));
+          const incomePct = (m.income / total) * 100;
+          const expensePct = (m.expense / total) * 100;
           return (
-            <div key={e.id} style={{ padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 14, fontWeight: "600", color: isPast ? C.muted : C.text }}>{e.name}</span>
-                    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 20, background: C.goldLight, color: "#92672A", border: `1px solid ${C.goldBorder}` }}>{e.type}</span>
-                    {isPast && <span style={{ fontSize: 11, color: C.muted }}>past</span>}
-                  </div>
-                  <div style={{ fontSize: 12, color: C.sub, marginTop: 3 }}>{e.date}{e.location ? ` · ${e.location}` : ""}</div>
-                  {e.notes && <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{e.notes}</div>}
-                  {e.cost > 0 && <div style={{ fontSize: 12, color: C.crimson, marginTop: 2, fontWeight: "600" }}>Est. cost: {fmt(e.cost)}</div>}
+            <div key={m.label} style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 10, alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 12, color: C.sub }}>{m.label}</div>
+              <div>
+                <div style={{ display: "flex", gap: 4, height: 8, borderRadius: 999, overflow: "hidden", background: "#F3F4F6" }}>
+                  <div style={{ width: `${Math.min(100, Math.max(0, incomePct))}%`, background: C.green, transition: "width 0.2s" }} />
+                  <div style={{ width: `${Math.min(100, Math.max(0, expensePct))}%`, background: C.red, transition: "width 0.2s" }} />
                 </div>
-                {isAdmin && <button onClick={() => delEvent(e.id)} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, padding: "0 4px", lineHeight: 1 }}>×</button>}
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 12, color: C.muted }}>
+                  <span>+{fmt(m.income)}</span>
+                  <span>-{fmt(m.expense)}</span>
+                </div>
               </div>
             </div>
           );
         })}
+      </Card>
+
+      <Card title="Top Categories">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 12, color: C.sub, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700 }}>Top Income</div>
+            {topCategories("income").length === 0 ? <EmptyState text="No income categories" /> : topCategories("income").map(([cat, amt]) => (
+              <div key={cat} style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ color: C.text }}>{cat}</span>
+                <span style={{ color: C.green, fontWeight: 700 }}>{fmt(amt)}</span>
+              </div>
+            ))}
+          </div>
+          <div>
+            <div style={{ fontSize: 12, color: C.sub, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.8, fontWeight: 700 }}>Top Expenses</div>
+            {topCategories("expense").length === 0 ? <EmptyState text="No expense categories" /> : topCategories("expense").map(([cat, amt]) => (
+              <div key={cat} style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
+                <span style={{ color: C.text }}>{cat}</span>
+                <span style={{ color: C.red, fontWeight: 700 }}>{fmt(amt)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </Card>
     </div>
   );
