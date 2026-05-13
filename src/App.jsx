@@ -917,9 +917,30 @@ function Forecast({ data, isAdmin }) {
           const actualExpense = monthlyForecast.map(m => m.actualExpense);
           const projectedExpense = monthlyForecast.map(m => m.projectedExpense);
           const maxValue = Math.max(1, ...[...actualExpense, ...projectedExpense]);
+          const totalActualIncome = actualSeries.reduce((sum, m) => sum + m.actualIncome, 0) + carryoverIncome;
+          const maxIncomeValue = Math.max(1, projectedIncome, totalActualIncome);
 
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 0", borderBottom: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: 11, color: C.text, fontWeight: 700 }}>Income</div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <div style={{ width: 80, fontSize: 10, color: C.green }}>Projected</div>
+                  <div style={{ flex: 1, height: 12, borderRadius: 999, background: "#ECFDF5", overflow: "hidden" }}>
+                    <div style={{ width: `${(projectedIncome / maxIncomeValue) * 100}%`, height: "100%", background: C.green }} />
+                  </div>
+                  <div style={{ width: 52, fontSize: 11, color: C.green, textAlign: "right" }}>{fmt(projectedIncome)}</div>
+                </div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <div style={{ width: 80, fontSize: 10, color: C.gold }}>Actual</div>
+                  <div style={{ flex: 1, height: 12, borderRadius: 999, background: "#FEFCE8", overflow: "hidden" }}>
+                    <div style={{ width: `${(totalActualIncome / maxIncomeValue) * 100}%`, height: "100%", background: C.gold }} />
+                  </div>
+                  <div style={{ width: 52, fontSize: 11, color: C.gold, textAlign: "right" }}>{fmt(totalActualIncome)}</div>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 11, color: C.text, fontWeight: 700 }}>Monthly Expenses</div>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 {[
                   { label: "Projected expense", color: C.red },
