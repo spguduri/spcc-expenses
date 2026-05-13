@@ -66,6 +66,16 @@ async function fetchAllData(year) {
 // ─── HELPERS ─────────────────────────────────────────────────────────────
 const fmt   = (n) => `$${Math.abs(n).toFixed(2)}`;
 const today = () => new Date().toISOString().split("T")[0];
+const FORECAST_SETTINGS_KEY = "spcc_forecast_settings";
+
+function loadForecastSettings() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(localStorage.getItem(FORECAST_SETTINGS_KEY));
+  } catch {
+    return null;
+  }
+}
 
 const TABS = ["Dashboard", "Finances", "Members", "Forecast"];
 
@@ -360,7 +370,7 @@ export default function App() {
         {tab === "Dashboard" && <Dashboard data={data} totalIn={totalIn} totalOut={totalOut} />}
         {tab === "Finances"  && <Finances  data={data} isAdmin={isAdmin} allExpCats={allExpCats} allIncCats={allIncCats} onAddTx={addTx} onDelTx={delTx} onAddCat={addCat} year={selectedYear} onUploadReceipt={uploadReceipt} />}
         {tab === "Members"   && <Members   data={data} isAdmin={isAdmin} onAddMember={addMember} onTogglePaid={togglePaid} onDelMember={delMember} onSaveAmt={saveAmt} />}
-        {tab === "Forecast"  && <Forecast  data={data} year={selectedYear} />}
+        {tab === "Forecast"  && <Forecast  data={data} isAdmin={isAdmin} />}
       </div>
 
       {/* Sign Out — fixed bottom left */}
@@ -705,21 +715,32 @@ function Members({ data, isAdmin, onAddMember, onTogglePaid, onDelMember, onSave
 }
 
 // ─── FORECAST ───────────────────────────────────────────────────────────
-function Forecast({ data }) {
-  const [membershipEstimate, setMembershipEstimate] = useState(4700);
-  const [carryover, setCarryover] = useState(0);
-  const [totalGames, setTotalGames] = useState(11);
-  const [homeGames, setHomeGames] = useState(5);
-  const [startMonth, setStartMonth] = useState("Apr");
-  const [endMonth, setEndMonth] = useState("Aug");
-  const [umpireFee, setUmpireFee] = useState(40);
-  const [homeFood, setHomeFood] = useState(130);
-  const [awayGas, setAwayGas] = useState(300);
-  const [groundFee, setGroundFee] = useState(300);
-  const [clubFees, setClubFees] = useState(500);
-  const [leagueFees, setLeagueFees] = useState(900);
-  const [equipmentCost, setEquipmentCost] = useState(400);
-  const [paintCost, setPaintCost] = useState(150);
+function Forecast({ data, isAdmin }) {
+  const savedSettings = loadForecastSettings() || {};
+  const [membershipEstimate, setMembershipEstimate] = useState(() => savedSettings.membershipEstimate ?? 4700);
+  const [carryover, setCarryover] = useState(() => savedSettings.carryover ?? 0);
+  const [totalGames, setTotalGames] = useState(() => savedSettings.totalGames ?? 11);
+  const [homeGames, setHomeGames] = useState(() => savedSettings.homeGames ?? 5);
+  const [startMonth, setStartMonth] = useState(() => savedSettings.startMonth ?? "Apr");
+  const [endMonth, setEndMonth] = useState(() => savedSettings.endMonth ?? "Aug");
+  const [umpireFee, setUmpireFee] = useState(() => savedSettings.umpireFee ?? 40);
+  const [homeFood, setHomeFood] = useState(() => savedSettings.homeFood ?? 130);
+  const [awayGas, setAwayGas] = useState(() => savedSettings.awayGas ?? 300);
+  const [groundFee, setGroundFee] = useState(() => savedSettings.groundFee ?? 300);
+  const [clubFees, setClubFees] = useState(() => savedSettings.clubFees ?? 500);
+  const [leagueFees, setLeagueFees] = useState(() => savedSettings.leagueFees ?? 900);
+  const [equipmentCost, setEquipmentCost] = useState(() => savedSettings.equipmentCost ?? 400);
+  const [paintCost, setPaintCost] = useState(() => savedSettings.paintCost ?? 150);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const payload = {
+      membershipEstimate, carryover, totalGames, homeGames,
+      startMonth, endMonth, umpireFee, homeFood, awayGas,
+      groundFee, clubFees, leagueFees, equipmentCost, paintCost,
+    };
+    localStorage.setItem(FORECAST_SETTINGS_KEY, JSON.stringify(payload));
+  }, [isAdmin, membershipEstimate, carryover, totalGames, homeGames, startMonth, endMonth, umpireFee, homeFood, awayGas, groundFee, clubFees, leagueFees, equipmentCost, paintCost]);
 
   const seasonMonths = ["Apr", "May", "Jun", "Jul", "Aug"];
   const startIndex = seasonMonths.indexOf(startMonth);
@@ -749,43 +770,45 @@ function Forecast({ data }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <Card title="Forecast Settings">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div>
-            <FieldLabel>Membership fees forecast</FieldLabel>
-            <input type="number" value={membershipEstimate} onChange={e => setMembershipEstimate(e.target.value)} style={inputStyle} />
-          </div>
-          <div>
-            <FieldLabel>Carryover from last year</FieldLabel>
-            <input type="number" value={carryover} onChange={e => setCarryover(e.target.value)} style={inputStyle} />
-          </div>
-          <div>
-            <FieldLabel>Total games</FieldLabel>
-            <input type="number" min="0" value={totalGames} onChange={e => setTotalGames(Math.max(0, Number(e.target.value)))} style={inputStyle} />
-          </div>
-          <div>
-            <FieldLabel>Home games</FieldLabel>
-            <input type="number" min="0" max={totalGames} value={homeGames} onChange={e => setHomeGames(Math.min(totalGames, Math.max(0, Number(e.target.value))))} style={inputStyle} />
-          </div>
-          <div>
-            <FieldLabel>Season start</FieldLabel>
-            <select value={startMonth} onChange={e => setStartMonth(e.target.value)} style={inputStyle}>
-              {seasonMonths.map(m => <option key={m}>{m}</option>)}
-            </select>
-          </div>
-          <div>
-            <FieldLabel>Season end</FieldLabel>
-            <select value={endMonth} onChange={e => setEndMonth(e.target.value)} style={inputStyle}>
-              {seasonMonths.map(m => <option key={m}>{m}</option>)}
-            </select>
-          </div>
-        </div>
-        <div style={{ marginTop: 12, fontSize: 12, color: C.muted }}>
-          Season is spread over {monthsInSeason.length} month(s): {monthsInSeason.join(" → ")}. Away games are calculated as total games minus home games.
-        </div>
-      </Card>
+      {isAdmin ? (
+        <>
+          <Card title="Forecast Settings">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div>
+                <FieldLabel>Membership fees forecast</FieldLabel>
+                <input type="number" value={membershipEstimate} onChange={e => setMembershipEstimate(e.target.value)} style={inputStyle} />
+              </div>
+              <div>
+                <FieldLabel>Carryover from last year</FieldLabel>
+                <input type="number" value={carryover} onChange={e => setCarryover(e.target.value)} style={inputStyle} />
+              </div>
+              <div>
+                <FieldLabel>Total games</FieldLabel>
+                <input type="number" min="0" value={totalGames} onChange={e => setTotalGames(Math.max(0, Number(e.target.value)))} style={inputStyle} />
+              </div>
+              <div>
+                <FieldLabel>Home games</FieldLabel>
+                <input type="number" min="0" max={totalGames} value={homeGames} onChange={e => setHomeGames(Math.min(totalGames, Math.max(0, Number(e.target.value))))} style={inputStyle} />
+              </div>
+              <div>
+                <FieldLabel>Season start</FieldLabel>
+                <select value={startMonth} onChange={e => setStartMonth(e.target.value)} style={inputStyle}>
+                  {seasonMonths.map(m => <option key={m}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <FieldLabel>Season end</FieldLabel>
+                <select value={endMonth} onChange={e => setEndMonth(e.target.value)} style={inputStyle}>
+                  {seasonMonths.map(m => <option key={m}>{m}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{ marginTop: 12, fontSize: 12, color: C.muted }}>
+              Season is spread over {monthsInSeason.length} month(s): {monthsInSeason.join(" → ")}. Away games are calculated as total games minus home games.
+            </div>
+          </Card>
 
-      <Card title="Expense Assumptions">
+          <Card title="Expense Assumptions">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
             <FieldLabel>Club fees (one-time)</FieldLabel>
@@ -821,6 +844,12 @@ function Forecast({ data }) {
           </div>
         </div>
       </Card>
+        </>
+      ) : (
+        <Card title="Forecast settings">
+          <div style={{ fontSize: 13, color: C.muted }}>Forecast assumptions are editable only by admins. Sign in as admin to change the season model.</div>
+        </Card>
+      )}
 
       <Card title="Season Forecast Overview">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -828,8 +857,7 @@ function Forecast({ data }) {
             { label: "Current balance", value: fmt(balance), color: balance >= 0 ? C.green : C.red },
             { label: "Projected season income", value: fmt(incomeProjected), color: C.green },
             { label: "Projected season expenses", value: fmt(totalExpenses), color: C.red },
-            { label: "Projected season net", value: fmt(seasonNet), color: seasonNet >= 0 ? C.green : C.red },
-            { label: "Balance after season", value: fmt(balance + seasonNet), color: balance + seasonNet >= 0 ? C.green : C.red },
+            { label: "Projected ending balance", value: fmt(seasonNet), color: seasonNet >= 0 ? C.green : C.red },
             { label: "Away games", value: awayGames, color: C.gold },
           ].map(item => (
             <div key={item.label} style={{ background: item.color === C.green ? C.greenLight : item.color === C.red ? C.redLight : "#fff", border: `1px solid ${item.color === C.green ? C.greenBorder : item.color === C.red ? C.redBorder : C.border}`, borderRadius: 14, padding: 14 }}>
