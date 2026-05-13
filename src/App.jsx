@@ -918,7 +918,8 @@ function Forecast({ data, isAdmin }) {
           const projectedExpense = monthlyForecast.map(m => m.projectedExpense);
           const maxValue = Math.max(1, ...[...actualExpense, ...projectedExpense]);
           const totalActualIncome = actualSeries.reduce((sum, m) => sum + m.actualIncome, 0) + carryoverIncome;
-          const maxIncomeValue = Math.max(1, projectedIncome, totalActualIncome);
+          const totalProjectedIncome = projectedIncome + carryoverIncome;
+          const maxIncomeValue = Math.max(1, totalProjectedIncome, totalActualIncome);
 
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -927,9 +928,9 @@ function Forecast({ data, isAdmin }) {
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <div style={{ width: 80, fontSize: 10, color: C.green }}>Projected</div>
                   <div style={{ flex: 1, height: 12, borderRadius: 999, background: "#ECFDF5", overflow: "hidden" }}>
-                    <div style={{ width: `${(projectedIncome / maxIncomeValue) * 100}%`, height: "100%", background: C.green }} />
+                    <div style={{ width: `${(totalProjectedIncome / maxIncomeValue) * 100}%`, height: "100%", background: C.green }} />
                   </div>
-                  <div style={{ width: 52, fontSize: 11, color: C.green, textAlign: "right" }}>{fmt(projectedIncome)}</div>
+                  <div style={{ width: 52, fontSize: 11, color: C.green, textAlign: "right" }}>{fmt(totalProjectedIncome)}</div>
                 </div>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <div style={{ width: 80, fontSize: 10, color: C.gold }}>Actual</div>
