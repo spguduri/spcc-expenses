@@ -737,7 +737,6 @@ function Forecast({ data }) {
   const totalExpenses = oneTimeExpenses + gameExpenses + groundExpenses;
   const seasonNet = incomeProjected - totalExpenses;
   const balance = data.transactions.reduce((sum, t) => sum + (t.type === "income" ? t.amount : -t.amount), 0);
-  const projectedBalance = balance + seasonNet;
 
   const gamesPerMonthBase = Math.floor(totalGames / monthsInSeason.length);
   const extraGames = totalGames % monthsInSeason.length;
@@ -830,7 +829,7 @@ function Forecast({ data }) {
             { label: "Projected season income", value: fmt(incomeProjected), color: C.green },
             { label: "Projected season expenses", value: fmt(totalExpenses), color: C.red },
             { label: "Projected season net", value: fmt(seasonNet), color: seasonNet >= 0 ? C.green : C.red },
-            { label: "Projected end balance", value: fmt(projectedBalance), color: projectedBalance >= 0 ? C.green : C.red },
+            { label: "Balance after season", value: fmt(balance + seasonNet), color: balance + seasonNet >= 0 ? C.green : C.red },
             { label: "Away games", value: awayGames, color: C.gold },
           ].map(item => (
             <div key={item.label} style={{ background: item.color === C.green ? C.greenLight : item.color === C.red ? C.redLight : "#fff", border: `1px solid ${item.color === C.green ? C.greenBorder : item.color === C.red ? C.redBorder : C.border}`, borderRadius: 14, padding: 14 }}>
