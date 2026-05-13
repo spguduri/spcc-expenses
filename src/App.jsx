@@ -750,13 +750,14 @@ function Forecast({ data, isAdmin }) {
   const awayGames = Math.max(0, totalGames - homeGames);
   const membershipIncome = Number(membershipEstimate);
   const carryoverIncome = Number(carryover);
-  const incomeProjected = membershipIncome + carryoverIncome;
+  const projectedIncome = membershipIncome; // only membership fees are forecasted
+  const totalSeasonIncome = membershipIncome + carryoverIncome;
 
   const oneTimeExpenses = Number(clubFees) + Number(leagueFees) + Number(equipmentCost) + Number(paintCost);
   const gameExpenses = (Number(umpireFee) * totalGames) + (Number(homeFood) * homeGames) + (Number(awayGas) * awayGames);
   const groundExpenses = Number(groundFee) * monthsInSeason.length;
   const totalExpenses = oneTimeExpenses + gameExpenses + groundExpenses;
-  const seasonNet = incomeProjected - totalExpenses;
+  const seasonNet = totalSeasonIncome - totalExpenses;
   const balance = data.transactions.reduce((sum, t) => sum + (t.type === "income" ? t.amount : -t.amount), 0);
 
   const distributeGames = (months, games) => {
@@ -796,14 +797,15 @@ function Forecast({ data, isAdmin }) {
 
   const monthlyForecast = monthsInSeason.map((label, index) => {
     const gameCount = gameCounts[index] ?? 0;
-    const income = index === 0 ? incomeProjected : 0;
-    const expense = Number(groundFee) + (gameCount * gameCostPerGame);
+    const income = index === 0 ? projectedIncome : 0;
+    const extraAprilFees = index === 0 ? Number(clubFees) + Number(leagueFees) : 0;
+    const expense = Number(groundFee) + (gameCount * gameCostPerGame) + extraAprilFees;
     return {
       label,
       gameCount,
       projectedIncome: income,
       projectedExpense: expense,
-      actualIncome: actualSeries[index].actualIncome,
+      actualIncome: index === 0 ? actualSeries[index].actualIncome + carryoverIncome : actualSeries[index].actualIncome,
       actualExpense: actualSeries[index].actualExpense,
     };
   });
@@ -895,7 +897,9 @@ function Forecast({ data, isAdmin }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
             { label: "Current balance", value: fmt(balance), color: balance >= 0 ? C.green : C.red },
-            { label: "Projected season income", value: fmt(incomeProjected), color: C.green },
+            { label: "Projected season membership income", value: fmt(projectedIncome), color: C.green },
+            { label: "Carryover available", value: fmt(carryoverIncome), color: C.gold },
+            { label: "Total season income", value: fmt(totalSeasonIncome), color: C.green },
             { label: "Projected season expenses", value: fmt(totalExpenses), color: C.red },
             { label: "Projected ending balance", value: fmt(seasonNet), color: seasonNet >= 0 ? C.green : C.red },
             { label: "Away games", value: awayGames, color: C.gold },
@@ -910,19 +914,15 @@ function Forecast({ data, isAdmin }) {
 
       <Card title="Season Breakdown">
         {(() => {
-          const actualIncome = monthlyForecast.map(m => m.actualIncome);
           const actualExpense = monthlyForecast.map(m => m.actualExpense);
-          const projectedIncome = monthlyForecast.map(m => m.projectedIncome);
           const projectedExpense = monthlyForecast.map(m => m.projectedExpense);
-          const maxValue = Math.max(1, ...[...actualIncome, ...actualExpense, ...projectedIncome, ...projectedExpense]);
+          const maxValue = Math.max(1, ...[...actualExpense, ...projectedExpense]);
 
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                 {[
-                  { label: "Projected income", color: C.green },
                   { label: "Projected expense", color: C.red },
-                  { label: "Actual income", color: "#A7F3D0" },
                   { label: "Actual expense", color: "#FECACA" },
                 ].map(item => (
                   <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: C.text }}>
@@ -933,35 +933,22 @@ function Forecast({ data, isAdmin }) {
               </div>
 
               {monthlyForecast.map(month => {
-                const projectedIncomePct = (month.projectedIncome / maxValue) * 100;
                 const projectedExpensePct = (month.projectedExpense / maxValue) * 100;
-                const actualIncomePct = (month.actualIncome / maxValue) * 100;
                 const actualExpensePct = (month.actualExpense / maxValue) * 100;
 
                 return (
                   <div key={month.label} style={{ display: "grid", gridTemplateColumns: "70px 1fr 120px", gap: 12, alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
-                    <div style={{ fontSize: 12, color: C.text, fontWeight: 700 }}>{month.label}</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ fontSize: 12, color: C.text, fontWeight: 700 }}>{month.label}</div>
+                      {month.label === "Apr" && <div style={{ fontSize: 10, color: C.muted }}>Includes club + league setup fees</div>}
+                    </div>
                     <div style={{ display: "grid", gap: 8 }}>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        <div style={{ width: 80, fontSize: 10, color: C.green }}>Proj inc</div>
-                        <div style={{ flex: 1, height: 12, borderRadius: 999, background: "#ECFDF5", overflow: "hidden" }}>
-                          <div style={{ width: `${projectedIncomePct}%`, height: "100%", background: C.green }} />
-                        </div>
-                        <div style={{ width: 52, fontSize: 11, color: C.green, textAlign: "right" }}>{fmt(month.projectedIncome)}</div>
-                      </div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <div style={{ width: 80, fontSize: 10, color: C.red }}>Proj exp</div>
                         <div style={{ flex: 1, height: 12, borderRadius: 999, background: "#FEF2F2", overflow: "hidden" }}>
                           <div style={{ width: `${projectedExpensePct}%`, height: "100%", background: C.red }} />
                         </div>
                         <div style={{ width: 52, fontSize: 11, color: C.red, textAlign: "right" }}>{fmt(month.projectedExpense)}</div>
-                      </div>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        <div style={{ width: 80, fontSize: 10, color: "#047857" }}>Actual inc</div>
-                        <div style={{ flex: 1, height: 10, borderRadius: 999, background: "#D1FAE5", overflow: "hidden" }}>
-                          <div style={{ width: `${actualIncomePct}%`, height: "100%", background: "#34D399" }} />
-                        </div>
-                        <div style={{ width: 52, fontSize: 11, color: "#047857", textAlign: "right" }}>{fmt(month.actualIncome)}</div>
                       </div>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <div style={{ width: 80, fontSize: 10, color: "#B91C1C" }}>Actual exp</div>
