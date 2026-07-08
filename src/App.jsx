@@ -52,12 +52,14 @@ function eventFromRow(r) {
   return { id: r.id, name: r.name, type: r.type, date: r.date, location: r.location || "", notes: r.notes || "", cost: Number(r.cost) || 0 };
 }
 async function fetchAllData(year, format) {
-  const [txRes, memRes, evRes, catRes, forecastRes] = await Promise.all([
+  const [txRes, memRes, evRes, catRes, forecastRes, yearTxRes] = await Promise.all([
     supabase.from("transactions").select("*").eq("year", year).eq("format", format).order("date", { ascending: false }),
     supabase.from("members").select("*").eq("year", year).eq("format", format),
     supabase.from("events").select("*").eq("year", year).eq("format", format).order("date", { ascending: false }),
     supabase.from("custom_categories").select("*").eq("year", year).eq("format", format),
     supabase.from("forecast_settings").select("settings").eq("year", year).eq("format", format).maybeSingle(),
+    // All formats for the year — the club runs a single shared bank account.
+    supabase.from("transactions").select("type,amount").eq("year", year),
   ]);
   return {
     transactions: (txRes.data || []).map(txFromRow),
@@ -66,6 +68,7 @@ async function fetchAllData(year, format) {
     customExpCats: (catRes.data || []).filter(c => c.cat_type === "expense").map(c => c.name),
     customIncCats: (catRes.data || []).filter(c => c.cat_type === "income").map(c => c.name),
     forecastSettings: forecastRes.data?.settings || null,
+    accountBalance: (yearTxRes.data || []).reduce((s, t) => s + (t.type === "income" ? Number(t.amount) : -Number(t.amount)), 0),
   };
 }
 
@@ -320,7 +323,7 @@ export default function App() {
   const isAdmin = authLevel === "admin";
   const allExpCats = [...EXPENSE_CATS, ...data.customExpCats];
   const allIncCats = [...INCOME_CATS,  ...data.customIncCats];
-  const balance  = data.transactions.reduce((s, t) => s + (t.type === "income" ? t.amount : -t.amount), 0);
+  const balance  = data.accountBalance; // shared bank account across all formats for the year
   const totalIn  = data.transactions.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const totalOut = data.transactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
 
@@ -336,7 +339,7 @@ export default function App() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 9, color: "rgba(56,73,89,0.6)", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "700" }}>BALANCE {selectedYear} · {selectedFormat}</div>
+            <div style={{ fontSize: 9, color: "rgba(56,73,89,0.6)", letterSpacing: 1.5, textTransform: "uppercase", fontWeight: "700" }}>BALANCE {selectedYear}</div>
             <div style={{ fontSize: 22, fontWeight: "800", color: balance >= 0 ? "#384959" : "#B91C1C", lineHeight: 1.1 }}>
               {balance >= 0 ? "" : "-"}{fmt(balance)}
             </div>
@@ -353,18 +356,22 @@ export default function App() {
         </div>
       </div>
 
-      {/* Year + Format Selector */}
-      <div style={{ background: "#fff", borderBottom: `1px solid ${C.border}`, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, overflowX: "auto" }}>
+      {/* Year Selector */}
+      <div style={{ background: "#fff", padding: "8px 16px 6px", display: "flex", gap: 8, overflowX: "auto" }}>
         {AVAILABLE_YEARS.map(y => (
           <button key={y} onClick={() => setSelectedYear(y)}
             style={{ padding: "5px 16px", borderRadius: 20, border: `1.5px solid ${selectedYear === y ? C.gold : C.border}`, background: selectedYear === y ? C.goldLight : "transparent", color: selectedYear === y ? "#92672A" : C.sub, fontWeight: selectedYear === y ? "700" : "500", cursor: "pointer", fontSize: 12, fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 }}>
             {y}
           </button>
         ))}
-        <div style={{ width: 1, alignSelf: "stretch", background: C.border, margin: "0 2px", flexShrink: 0 }} />
+      </div>
+
+      {/* Format sub-tabs (nested under the selected year) */}
+      <div style={{ background: C.crimsonLight, borderBottom: `1px solid ${C.border}`, padding: "6px 16px 6px 28px", display: "flex", alignItems: "center", gap: 8, overflowX: "auto" }}>
+        <span style={{ fontSize: 10, color: C.muted, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", flexShrink: 0, marginRight: 2 }}>{selectedYear} ›</span>
         {FORMATS.map(f => (
           <button key={f} onClick={() => setSelectedFormat(f)}
-            style={{ padding: "5px 16px", borderRadius: 20, border: `1.5px solid ${selectedFormat === f ? C.crimson : C.border}`, background: selectedFormat === f ? C.crimsonLight : "transparent", color: selectedFormat === f ? C.crimson : C.sub, fontWeight: selectedFormat === f ? "700" : "500", cursor: "pointer", fontSize: 12, fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 }}>
+            style={{ padding: "4px 14px", borderRadius: 20, border: `1.5px solid ${selectedFormat === f ? C.crimson : C.border}`, background: selectedFormat === f ? "#fff" : "transparent", color: selectedFormat === f ? C.crimson : C.sub, fontWeight: selectedFormat === f ? "700" : "500", cursor: "pointer", fontSize: 12, fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 }}>
             {f}
           </button>
         ))}
