@@ -738,20 +738,23 @@ function Members({ data, isAdmin, onAddMember, onTogglePaid, onDelMember, onSave
 // ─── FORECAST ───────────────────────────────────────────────────────────
 function Forecast({ data, isAdmin, year, format }) {
   const savedSettings = data.forecastSettings || loadForecastSettings(year, format) || {};
-  const [membershipEstimate, setMembershipEstimate] = useState(() => savedSettings.membershipEstimate ?? 4700);
-  const [carryover, setCarryover] = useState(() => savedSettings.carryover ?? 0);
-  const [totalGames, setTotalGames] = useState(() => savedSettings.totalGames ?? 11);
-  const [homeGames, setHomeGames] = useState(() => savedSettings.homeGames ?? 5);
+  // Fields start blank for a format with nothing saved — the user enters every
+  // number, then it persists. Month selectors keep a sensible range so the
+  // season math has a valid window until changed.
+  const [membershipEstimate, setMembershipEstimate] = useState(() => savedSettings.membershipEstimate ?? "");
+  const [carryover, setCarryover] = useState(() => savedSettings.carryover ?? "");
+  const [totalGames, setTotalGames] = useState(() => savedSettings.totalGames ?? "");
+  const [homeGames, setHomeGames] = useState(() => savedSettings.homeGames ?? "");
   const [startMonth, setStartMonth] = useState(() => savedSettings.startMonth ?? "Apr");
   const [endMonth, setEndMonth] = useState(() => savedSettings.endMonth ?? "Aug");
-  const [umpireFee, setUmpireFee] = useState(() => savedSettings.umpireFee ?? 40);
-  const [homeFood, setHomeFood] = useState(() => savedSettings.homeFood ?? 130);
-  const [awayGas, setAwayGas] = useState(() => savedSettings.awayGas ?? 300);
-  const [groundFee, setGroundFee] = useState(() => savedSettings.groundFee ?? 300);
-  const [clubFees, setClubFees] = useState(() => savedSettings.clubFees ?? 500);
-  const [leagueFees, setLeagueFees] = useState(() => savedSettings.leagueFees ?? 900);
-  const [equipmentCost, setEquipmentCost] = useState(() => savedSettings.equipmentCost ?? 400);
-  const [paintCost, setPaintCost] = useState(() => savedSettings.paintCost ?? 150);
+  const [umpireFee, setUmpireFee] = useState(() => savedSettings.umpireFee ?? "");
+  const [homeFood, setHomeFood] = useState(() => savedSettings.homeFood ?? "");
+  const [awayGas, setAwayGas] = useState(() => savedSettings.awayGas ?? "");
+  const [groundFee, setGroundFee] = useState(() => savedSettings.groundFee ?? "");
+  const [clubFees, setClubFees] = useState(() => savedSettings.clubFees ?? "");
+  const [leagueFees, setLeagueFees] = useState(() => savedSettings.leagueFees ?? "");
+  const [equipmentCost, setEquipmentCost] = useState(() => savedSettings.equipmentCost ?? "");
+  const [paintCost, setPaintCost] = useState(() => savedSettings.paintCost ?? "");
   const [saveStatus, setSaveStatus] = useState(null); // null | "saving" | "saved"
 
   const saveSettings = async () => {
