@@ -368,7 +368,6 @@ export default function App() {
 
       {/* Format sub-tabs (nested under the selected year) */}
       <div style={{ background: C.crimsonLight, borderBottom: `1px solid ${C.border}`, padding: "6px 16px 6px 28px", display: "flex", alignItems: "center", gap: 8, overflowX: "auto" }}>
-        <span style={{ fontSize: 10, color: C.muted, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", flexShrink: 0, marginRight: 2 }}>{selectedYear} ›</span>
         {FORMATS.map(f => (
           <button key={f} onClick={() => setSelectedFormat(f)}
             style={{ padding: "4px 14px", borderRadius: 20, border: `1.5px solid ${selectedFormat === f ? C.crimson : C.border}`, background: selectedFormat === f ? "#fff" : "transparent", color: selectedFormat === f ? C.crimson : C.sub, fontWeight: selectedFormat === f ? "700" : "500", cursor: "pointer", fontSize: 12, fontFamily: "inherit", whiteSpace: "nowrap", flexShrink: 0 }}>
