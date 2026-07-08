@@ -791,7 +791,7 @@ function Forecast({ data, isAdmin, year, format }) {
     setTimeout(() => setSaveStatus(null), 2000);
   };
 
-  const seasonMonths = ["Apr", "May", "Jun", "Jul", "Aug"];
+  const seasonMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const startIndex = seasonMonths.indexOf(startMonth);
   const endIndex = seasonMonths.indexOf(endMonth);
   const monthsInSeason = endIndex >= startIndex ? seasonMonths.slice(startIndex, endIndex + 1) : seasonMonths.slice(startIndex).concat(seasonMonths.slice(0, endIndex + 1));
@@ -836,7 +836,7 @@ function Forecast({ data, isAdmin, year, format }) {
   const gameCounts = distributeGames(monthsInSeason, totalGames);
   const gameCostPerGame = totalGames > 0 ? (Number(umpireFee) + (Number(homeFood) * (homeGames / totalGames)) + (Number(awayGas) * (awayGames / totalGames))) : 0;
 
-  const monthNumber = { Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08" };
+  const monthNumber = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
   const actualSeries = monthsInSeason.map(label => {
     const monthKey = monthNumber[label] || "00";
     const income = data.transactions.filter(t => t.type === "income" && t.date.slice(5, 7) === monthKey).reduce((sum, t) => sum + t.amount, 0);
