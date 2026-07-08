@@ -276,6 +276,14 @@ export default function App() {
     await supabase.from("transactions").delete().eq("id", id);
     setData(d => ({ ...d, transactions: d.transactions.filter(t => t.id !== id) }));
   };
+  const updateTx = async (id, form) => {
+    await supabase.from("transactions").update({
+      type: form.type, date: form.date, category: form.category,
+      amount: form.amount, note: form.note || "", paypal: form.paypal || false,
+      member_name: form.memberName || "",
+    }).eq("id", id);
+    setData(await fetchAllData(selectedYear, selectedFormat));
+  };
   const uploadReceipt = async (id, file) => {
     const ext = file.name.split(".").pop();
     const path = `${id}.${ext}`;
@@ -388,7 +396,7 @@ export default function App() {
       {/* Content */}
       <div style={{ padding: "16px 16px 80px", maxWidth: 640, margin: "0 auto" }}>
         {tab === "Dashboard" && <Dashboard data={data} totalIn={totalIn} totalOut={totalOut} />}
-        {tab === "Finances"  && <Finances  data={data} isAdmin={isAdmin} allExpCats={allExpCats} allIncCats={allIncCats} onAddTx={addTx} onDelTx={delTx} onAddCat={addCat} year={selectedYear} onUploadReceipt={uploadReceipt} />}
+        {tab === "Finances"  && <Finances  data={data} isAdmin={isAdmin} allExpCats={allExpCats} allIncCats={allIncCats} onAddTx={addTx} onDelTx={delTx} onUpdateTx={updateTx} onAddCat={addCat} year={selectedYear} onUploadReceipt={uploadReceipt} />}
         {tab === "Members"   && <Members   data={data} isAdmin={isAdmin} onAddMember={addMember} onTogglePaid={togglePaid} onDelMember={delMember} onSaveAmt={saveAmt} />}
         {tab === "Forecast"  && <Forecast key={`${selectedYear}-${selectedFormat}`} data={data} isAdmin={isAdmin} year={selectedYear} format={selectedFormat} />}
       </div>
@@ -492,19 +500,30 @@ function Dashboard({ data, totalIn, totalOut }) {
 }
 
 // ─── FINANCES ────────────────────────────────────────────────────────────
-function Finances({ data, isAdmin, allExpCats, allIncCats, onAddTx, onDelTx, onAddCat, year, onUploadReceipt }) {
+function Finances({ data, isAdmin, allExpCats, allIncCats, onAddTx, onDelTx, onUpdateTx, onAddCat, year, onUploadReceipt }) {
   const blank = { type: "expense", date: today(), category: allExpCats[0], amount: "", note: "", paypal: false, memberName: "" };
   const [form, setForm]       = useState(blank);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [newCat, setNewCat]   = useState("");
   const [catType, setCatType] = useState("expense");
   const [filter, setFilter]   = useState("all");
   const [receiptFile, setReceiptFile] = useState(null);
 
-  const addTx = async () => {
+  const closeForm = () => { setForm(blank); setShowForm(false); setEditingId(null); setReceiptFile(null); };
+  const submitTx = async () => {
     if (!form.amount || isNaN(form.amount) || +form.amount <= 0) return;
-    await onAddTx({ ...form, amount: parseFloat(form.amount) }, receiptFile);
-    setForm(blank); setShowForm(false); setReceiptFile(null);
+    const payload = { ...form, amount: parseFloat(form.amount) };
+    if (editingId) await onUpdateTx(editingId, payload);
+    else await onAddTx(payload, receiptFile);
+    closeForm();
+  };
+  const startEdit = (t) => {
+    setEditingId(t.id);
+    setForm({ type: t.type, date: t.date, category: t.category, amount: String(t.amount), note: t.note || "", paypal: t.paypal || false, memberName: t.memberName || "" });
+    setReceiptFile(null);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const delTx = async (id) => { await onDelTx(id); };
   const addCat = async () => {
@@ -518,7 +537,7 @@ function Finances({ data, isAdmin, allExpCats, allIncCats, onAddTx, onDelTx, onA
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {isAdmin && (
-        <ActionBtn onClick={() => setShowForm(!showForm)} label={showForm ? "Cancel" : "+ Add Transaction"} />
+        <ActionBtn onClick={() => (showForm ? closeForm() : setShowForm(true))} label={showForm ? "Cancel" : "+ Add Transaction"} />
       )}
       {!isAdmin && (
         <div style={{ background: C.goldLight, border: `1px solid ${C.goldBorder}`, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: "#92672A", display: "flex", alignItems: "center", gap: 8 }}>
@@ -528,7 +547,9 @@ function Finances({ data, isAdmin, allExpCats, allIncCats, onAddTx, onDelTx, onA
 
       {isAdmin && showForm && (
         <FormCard>
-          {/* form contents unchanged */}
+          <div style={{ fontSize: 13, fontWeight: "700", color: editingId ? C.crimson : C.gold }}>
+            {editingId ? "✏️ Edit Transaction" : "New Transaction"}
+          </div>
           <div>
             <FieldLabel>Type</FieldLabel>
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
@@ -566,12 +587,12 @@ function Finances({ data, isAdmin, allExpCats, allIncCats, onAddTx, onDelTx, onA
           <FormRow label="Amount ($)"><input type="number" placeholder="0.00" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} style={inputStyle} /></FormRow>
           <FormRow label="Note"><input placeholder="Optional note" value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} style={inputStyle} /></FormRow>
           <FormRow label="PayPal?"><input type="checkbox" checked={form.paypal} onChange={e => setForm({ ...form, paypal: e.target.checked })} style={{ accentColor: C.gold, width: 18, height: 18 }} /></FormRow>
-          {form.type === "expense" && (
+          {form.type === "expense" && !editingId && (
             <FormRow label="Receipt (optional)">
               <input type="file" accept="image/*,application/pdf" onChange={e => setReceiptFile(e.target.files[0] || null)} style={{ ...inputStyle, padding: "6px 10px", fontSize: 13 }} />
             </FormRow>
           )}
-          <button onClick={addTx} style={saveBtnStyle}>Save Transaction</button>
+          <button onClick={submitTx} style={saveBtnStyle}>{editingId ? "Save Changes" : "Save Transaction"}</button>
         </FormCard>
       )}
 
@@ -602,6 +623,7 @@ function Finances({ data, isAdmin, allExpCats, allIncCats, onAddTx, onDelTx, onA
                 📎<input type="file" accept="image/*,application/pdf" style={{ display: "none" }} onChange={e => e.target.files[0] && onUploadReceipt(t.id, e.target.files[0])} />
               </label>
             )}
+            {isAdmin && <button onClick={() => startEdit(t)} style={{ background: "transparent", border: "none", color: C.gold, cursor: "pointer", fontSize: 15, padding: "0 4px" }} title="Edit">✏️</button>}
             {isAdmin && <button onClick={() => { if (window.confirm(`Delete this ${t.type} of ${fmt(t.amount)}?`)) delTx(t.id); }} style={{ background: "transparent", border: "none", color: C.muted, cursor: "pointer", fontSize: 20, padding: "0 4px", lineHeight: 1 }} title="Delete">×</button>}
           </div>
         ))}
